@@ -1,0 +1,6 @@
+@echo off
+title YTS Cinema Filter - WebApp
+echo Iniciando YTS Cinema Filter...
+echo Abriendo aplicacion en http://localhost:5000 ...
+python app.py
+pause

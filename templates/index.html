@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YTS Cinema Filter - IMDb +7 & >500 Votos</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            },
+            imdb: '#f5c518',
+            tomato: '#fa320a',
+            popcorn: '#ffb400'
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+    .glass {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-gray-800/80 glass sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <i data-lucide="film" class="w-5 h-5 text-gray-950 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-gray-200 to-emerald-400 bg-clip-text text-transparent">
+            YTS Cinema Filter
+          </h1>
+          <p class="text-xs text-gray-400 font-medium flex items-center gap-1.5">
+            <span>Filtro estricto IMDb +7</span>
+            <span class="inline-block w-1 h-1 rounded-full bg-emerald-500"></span>
+            <span>&gt;500 votos</span>
+            <span class="inline-block w-1 h-1 rounded-full bg-tomato"></span>
+            <span>Rotten Tomatoes 60%</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="toggle-config-btn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-800/70 rounded-lg transition" title="Configuración avanzada">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+        <a href="https://en.yts-official.biz/browse-movies" target="_blank" rel="noopener" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg font-medium border border-gray-700 flex items-center gap-1.5 transition">
+          <span>YTS Oficial</span>
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+
+    <!-- Filter Card -->
+    <div class="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-60 h-60 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+      <form id="filter-form" class="space-y-5">
+        <!-- Row 1: Year, Genre, Rating, Min Votes -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Year -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
+              <span>Año de Estreno</span>
+              <span class="text-[10px] text-emerald-400 font-normal">Default: 2026</span>
+            </label>
+            <div class="relative">
+              <select id="select-year" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition appearance-none">
+                {% for y in years %}
+                  <option value="{{ y }}" {% if y == '2026' %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+                <option value="custom">Otro año (personalizado)...</option>
+              </select>
+              <i data-lucide="calendar" class="w-4 h-4 text-gray-400 absolute right-3.5 top-3 pointer-events-none"></i>
+            </div>
+            <input type="number" id="custom-year-input" placeholder="Ej: 2025" min="1900" max="2099" class="hidden mt-2 w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:border-emerald-500 transition">
+          </div>
+
+          <!-- Genre -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
+              <span>Género</span>
+              <span class="text-[10px] text-gray-500 font-normal">Default: all</span>
+            </label>
+            <div class="relative">
+              <select id="select-genre" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition appearance-none capitalize">
+                {% for g in genres %}
+                  <option value="{{ g }}" {% if g == 'all' %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="tag" class="w-4 h-4 text-gray-400 absolute right-3.5 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Min Rating -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
+              <span>Calificación Mínima</span>
+              <span id="rating-val-badge" class="text-xs text-amber-400 font-bold">7.0</span>
+            </label>
+            <div class="relative flex items-center">
+              <input type="range" id="input-min-rating" min="5.0" max="9.0" step="0.1" value="7.0" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500">
+            </div>
+            <div class="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+              <span>5.0</span>
+              <span class="text-emerald-400 font-semibold">7.0 (Objetivo)</span>
+              <span>9.0</span>
+            </div>
+          </div>
+
+          <!-- Min IMDb Votes -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
+              <span>Votos Mínimos IMDb</span>
+              <span class="text-[10px] text-amber-400 font-normal">&gt;500 votos</span>
+            </label>
+            <div class="relative">
+              <input type="number" id="input-min-votes" min="50" max="100000" step="50" value="500" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition">
+              <i data-lucide="users" class="w-4 h-4 text-gray-400 absolute right-3.5 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Row 2: Rotten Tomatoes, Order By, Pages, Submit Button -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+          
+          <!-- Rotten Tomatoes Mode -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
+              <span>Rotten Tomatoes (60%)</span>
+              <span class="text-[10px] text-tomato font-bold">🍅 & 🍿</span>
+            </label>
+            <div class="relative">
+              <select id="select-rt-mode" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition appearance-none">
+                <option value="if_available" selected>Híbrido (Exigir 60% si tiene RT)</option>
+                <option value="strict">Estricto (Obligatorio +60% ambos)</option>
+                <option value="off">Desactivado (Solo nota informativa)</option>
+              </select>
+              <i data-lucide="award" class="w-4 h-4 text-gray-400 absolute right-3.5 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Order By -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5">
+              Ordenar Por
+            </label>
+            <div class="relative">
+              <select id="select-order-by" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition appearance-none">
+                {% for opt in order_by_options %}
+                  <option value="{{ opt.value }}" {% if opt.value == 'latest' %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="arrow-down-up" class="w-4 h-4 text-gray-400 absolute right-3.5 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Pages to Scan -->
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center justify-between">
+              <span>Páginas a Escanear</span>
+              <span id="pages-badge" class="text-[10px] text-gray-400 font-mono">3 págs (~60 films)</span>
+            </label>
+            <div class="relative">
+              <select id="select-max-pages" class="w-full bg-gray-800/90 border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition appearance-none">
+                <option value="1">1 página (~20 películas)</option>
+                <option value="2">2 páginas (~40 películas)</option>
+                <option value="3" selected>3 páginas (~60 películas)</option>
+                <option value="5">5 páginas (~100 películas)</option>
+                <option value="8">8 páginas (~160 películas)</option>
+              </select>
+              <i data-lucide="layers" class="w-4 h-4 text-gray-400 absolute right-3.5 top-3 pointer-events-none"></i>
+            </div>
+          </div>
+
+          <!-- Actions: Start and Abort -->
+          <div class="flex items-end gap-2">
+            <button type="submit" id="btn-start" class="flex-1 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-gray-950 font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition transform active:scale-98">
+              <i data-lucide="search" class="w-4 h-4 stroke-[2.5]"></i>
+              <span id="btn-start-text">Buscar y Filtrar</span>
+            </button>
+            <button type="button" id="btn-abort" class="hidden bg-rose-600 hover:bg-rose-500 text-white font-bold p-2.5 rounded-xl transition" title="Detener escaneo">
+              <i data-lucide="square" class="w-4 h-4 stroke-[2.5]"></i>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Advanced Settings Collapsible -->
+        <div id="advanced-settings-panel" class="hidden pt-3 border-t border-gray-800 text-xs text-gray-400 space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-medium mb-1">Palabra Clave (opcional)</label>
+              <input type="text" id="input-keyword" placeholder="Buscar por título..." class="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">
+            </div>
+            <div>
+              <label class="block font-medium mb-1">API Key Personal de OMDb (opcional)</label>
+              <input type="text" id="input-custom-key" placeholder="Usa el pool automático si se deja vacío" class="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-emerald-500">
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Active Scanning Progress Panel -->
+    <div id="progress-card" class="hidden bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-4 animate-fade-in shadow-xl">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="relative flex items-center justify-center">
+            <div class="w-3 h-3 bg-emerald-500 rounded-full animate-ping absolute"></div>
+            <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+          </div>
+          <span id="progress-status-text" class="text-sm font-semibold text-gray-200">
+            Iniciando escaneo...
+          </span>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-mono">
+          <span class="text-gray-400">Analizadas: <strong id="stat-total" class="text-white text-sm">0</strong></span>
+          <span class="text-emerald-400 font-semibold flex items-center gap-1">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+            Aprobadas: <strong id="stat-passed" class="text-emerald-300 text-sm">0</strong>
+          </span>
+          <span class="text-rose-400 font-semibold flex items-center gap-1">
+            <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+            Descartadas: <strong id="stat-discarded" class="text-rose-300 text-sm">0</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden">
+        <div id="progress-bar-fill" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-2.5 rounded-full transition-all duration-300 w-0"></div>
+      </div>
+
+      <!-- Live Activity Log Ticker -->
+      <div id="activity-ticker" class="text-xs text-gray-400 bg-gray-950/80 px-3 py-2 rounded-lg border border-gray-800/80 font-mono truncate">
+        Esperando respuesta del servidor...
+      </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="space-y-4">
+      
+      <!-- Results Header & Tabs -->
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 pb-3">
+        <div class="flex items-center gap-2">
+          <!-- Tab Aprobadas -->
+          <button id="tab-passed" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Aprobadas (+7 &gt;500 votos)</span>
+            <span id="tab-passed-count" class="bg-emerald-500 text-gray-950 px-2 py-0.5 rounded-full text-xs font-extrabold">0</span>
+          </button>
+          <!-- Tab Descartadas -->
+          <button id="tab-discarded" class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/60 border border-transparent transition">
+            <i data-lucide="archive" class="w-4 h-4"></i>
+            <span>Descartadas (Transparencia)</span>
+            <span id="tab-discarded-count" class="bg-gray-800 text-gray-300 px-2 py-0.5 rounded-full text-xs font-semibold">0</span>
+          </button>
+        </div>
+
+        <!-- Export Actions -->
+        <div class="flex items-center gap-2">
+          <button id="btn-export-csv" class="hidden text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg border border-gray-700 font-medium items-center gap-1.5 transition">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Descargar CSV</span>
+          </button>
+          <button id="btn-copy-magnets" class="hidden text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg border border-gray-700 font-medium items-center gap-1.5 transition">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Copiar Todos los Magnets</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content: Approved Movies Grid -->
+      <div id="container-passed" class="space-y-4">
+        <div id="grid-passed" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+          <!-- Initial Empty State -->
+          <div class="col-span-full py-16 text-center text-gray-500 space-y-3">
+            <div class="w-16 h-16 rounded-2xl bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-gray-600">
+              <i data-lucide="clapperboard" class="w-8 h-8"></i>
+            </div>
+            <p class="text-base font-semibold text-gray-400">Ningún escaneo iniciado todavía</p>
+            <p class="text-xs text-gray-500 max-w-md mx-auto">
+              Haz clic en <strong>"Buscar y Filtrar"</strong> para evaluar el catálogo de YTS con validación estricta de rating IMDb $\ge 7.0$ y más de 500 votos.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Discarded Movies Table / Cards -->
+      <div id="container-discarded" class="hidden space-y-3">
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden shadow-xl">
+          <div class="p-4 border-b border-gray-800 flex items-center justify-between">
+            <div class="text-xs text-gray-400">
+              Listado completo de títulos analizados que <strong>no superaron</strong> los filtros exigidos.
+            </div>
+            <span class="text-xs text-gray-500 font-mono" id="discarded-summary-text">0 descartadas</span>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-gray-300">
+              <thead class="bg-gray-950/60 text-gray-400 uppercase font-semibold text-[10px] tracking-wider border-b border-gray-800">
+                <tr>
+                  <th class="py-3 px-4">Póster & Título</th>
+                  <th class="py-3 px-3">Año</th>
+                  <th class="py-3 px-3">IMDb Rating</th>
+                  <th class="py-3 px-3">Votos IMDb</th>
+                  <th class="py-3 px-3">Rotten Tomatoes</th>
+                  <th class="py-3 px-4">Motivo de Descarte</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-discarded" class="divide-y divide-gray-800/60">
+                <tr>
+                  <td colspan="6" class="py-8 text-center text-gray-500">
+                    No hay películas descartadas aún.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-gray-900 border border-emerald-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+    <i data-lucide="check" class="w-5 h-5 text-emerald-400"></i>
+    <span id="toast-message" class="text-xs font-semibold">Enlace magnet copiado</span>
+  </div>
+
+  <!-- App JavaScript Logic -->
+  <script>
+    // State
+    let state = {
+      isScanning: false,
+      eventSource: null,
+      passedMovies: [],
+      discardedMovies: [],
+      activeTab: 'passed'
+    };
+
+    // DOM Elements
+    const form = document.getElementById('filter-form');
+    const btnStart = document.getElementById('btn-start');
+    const btnStartText = document.getElementById('btn-start-text');
+    const btnAbort = document.getElementById('btn-abort');
+    const progressCard = document.getElementById('progress-card');
+    const progressStatusText = document.getElementById('progress-status-text');
+    const progressBarFill = document.getElementById('progress-bar-fill');
+    const activityTicker = document.getElementById('activity-ticker');
+    const statTotal = document.getElementById('stat-total');
+    const statPassed = document.getElementById('stat-passed');
+    const statDiscarded = document.getElementById('stat-discarded');
+
+    const tabPassed = document.getElementById('tab-passed');
+    const tabDiscarded = document.getElementById('tab-discarded');
+    const tabPassedCount = document.getElementById('tab-passed-count');
+    const tabDiscardedCount = document.getElementById('tab-discarded-count');
+    const containerPassed = document.getElementById('container-passed');
+    const containerDiscarded = document.getElementById('container-discarded');
+    const gridPassed = document.getElementById('grid-passed');
+    const tbodyDiscarded = document.getElementById('tbody-discarded');
+    const discardedSummaryText = document.getElementById('discarded-summary-text');
+
+    const btnExportCsv = document.getElementById('btn-export-csv');
+    const btnCopyMagnets = document.getElementById('btn-copy-magnets');
+
+    const selectYear = document.getElementById('select-year');
+    const customYearInput = document.getElementById('custom-year-input');
+    const inputMinRating = document.getElementById('input-min-rating');
+    const ratingValBadge = document.getElementById('rating-val-badge');
+    const selectMaxPages = document.getElementById('select-max-pages');
+    const pagesBadge = document.getElementById('pages-badge');
+
+    const toggleConfigBtn = document.getElementById('toggle-config-btn');
+    const advancedSettingsPanel = document.getElementById('advanced-settings-panel');
+
+    // Init icons
+    lucide.createIcons();
+
+    // Event Listeners
+    toggleConfigBtn.addEventListener('click', () => {
+      advancedSettingsPanel.classList.toggle('hidden');
+    });
+
+    selectYear.addEventListener('change', (e) => {
+      if (e.target.value === 'custom') {
+        customYearInput.classList.remove('hidden');
+        customYearInput.focus();
+      } else {
+        customYearInput.classList.add('hidden');
+      }
+    });
+
+    inputMinRating.addEventListener('input', (e) => {
+      ratingValBadge.textContent = parseFloat(e.target.value).toFixed(1);
+    });
+
+    selectMaxPages.addEventListener('change', (e) => {
+      const p = parseInt(e.target.value);
+      pagesBadge.textContent = `${p} pág${p > 1 ? 's' : ''} (~${p * 20} films)`;
+    });
+
+    // Tab switching
+    tabPassed.addEventListener('click', () => switchTab('passed'));
+    tabDiscarded.addEventListener('click', () => switchTab('discarded'));
+
+    function switchTab(target) {
+      state.activeTab = target;
+      if (target === 'passed') {
+        tabPassed.className = "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 transition";
+        tabDiscarded.className = "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/60 border border-transparent transition";
+        containerPassed.classList.remove('hidden');
+        containerDiscarded.classList.add('hidden');
+      } else {
+        tabDiscarded.className = "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 transition";
+        tabPassed.className = "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-800/60 border border-transparent transition";
+        containerDiscarded.classList.remove('hidden');
+        containerPassed.classList.add('hidden');
+      }
+    }
+
+    // Form Submit -> Start Scanning
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (state.isScanning) return;
+      startScan();
+    });
+
+    btnAbort.addEventListener('click', () => {
+      stopScan(true);
+    });
+
+    function getSelectedYear() {
+      if (selectYear.value === 'custom') {
+        return customYearInput.value.trim() || '2026';
+      }
+      return selectYear.value;
+    }
+
+    function startScan() {
+      state.isScanning = true;
+      state.passedMovies = [];
+      state.discardedMovies = [];
+
+      // Reset UI
+      gridPassed.innerHTML = '';
+      tbodyDiscarded.innerHTML = '';
+      tabPassedCount.textContent = '0';
+      tabDiscardedCount.textContent = '0';
+      statTotal.textContent = '0';
+      statPassed.textContent = '0';
+      statDiscarded.textContent = '0';
+      progressBarFill.style.width = '5%';
+
+      btnStart.disabled = true;
+      btnStart.classList.add('opacity-75');
+      btnStartText.textContent = "Escaneando...";
+      btnAbort.classList.remove('hidden');
+      progressCard.classList.remove('hidden');
+      btnExportCsv.classList.add('hidden');
+      btnCopyMagnets.classList.add('hidden');
+
+      const year = getSelectedYear();
+      const genre = document.getElementById('select-genre').value;
+      const minRating = inputMinRating.value;
+      const minVotes = document.getElementById('input-min-votes').value;
+      const rtMode = document.getElementById('select-rt-mode').value;
+      const orderBy = document.getElementById('select-order-by').value;
+      const maxPages = selectMaxPages.value;
+      const keyword = document.getElementById('input-keyword').value.trim();
+      const customKey = document.getElementById('input-custom-key').value.trim();
+
+      const params = new URLSearchParams({
+        year,
+        genre,
+        min_rating: minRating,
+        min_votes: minVotes,
+        rt_mode: rtMode,
+        order_by: orderBy,
+        max_pages: maxPages,
+        keyword,
+        custom_key: customKey
+      });
+
+      const sseUrl = `/api/scan?${params.toString()}`;
+      activityTicker.textContent = `Conectando con YTS (Año: ${year}, Género: ${genre}, Rating >= ${minRating}, Votos > ${minVotes})...`;
+
+      state.eventSource = new EventSource(sseUrl);
+
+      state.eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          handleStreamEvent(data, parseInt(maxPages));
+        } catch (err) {
+          console.error("Error parseando evento SSE:", err);
+        }
+      };
+
+      state.eventSource.onerror = (err) => {
+        console.warn("Evento de cierre o error de conexión SSE:", err);
+        stopScan(false);
+      };
+    }
+
+    function handleStreamEvent(data, totalPagesConfigured) {
+      if (data.type === 'start') {
+        progressStatusText.textContent = `Escaneando año ${data.year} (Género: ${data.genre})...`;
+      } else if (data.type === 'page_start') {
+        activityTicker.textContent = `🔍 Leyendo página ${data.page} de YTS...`;
+        const pct = Math.min(90, Math.round(((data.page - 1) / totalPagesConfigured) * 100) + 10);
+        progressBarFill.style.width = `${pct}%`;
+      } else if (data.type === 'movie') {
+        const m = data.movie;
+        statTotal.textContent = data.total_evaluated;
+        statPassed.textContent = data.total_passed;
+        statDiscarded.textContent = data.total_discarded;
+        tabPassedCount.textContent = data.total_passed;
+        tabDiscardedCount.textContent = data.total_discarded;
+
+        if (m.passed) {
+          state.passedMovies.push(m);
+          renderPassedMovieCard(m);
+          activityTicker.innerHTML = `<span class="text-emerald-400">✔ APROBADA:</span> <strong>${m.title}</strong> (${m.year}) - ⭐ ${m.imdb_rating} (${m.imdb_votes.toLocaleString()} votos)`;
+          btnExportCsv.classList.remove('hidden');
+          btnCopyMagnets.classList.remove('hidden');
+        } else {
+          state.discardedMovies.push(m);
+          renderDiscardedTableRow(m);
+          activityTicker.innerHTML = `<span class="text-rose-400">✖ DESCARTADA:</span> <strong>${m.title}</strong> - ${m.reason}`;
+        }
+      } else if (data.type === 'page_empty') {
+        activityTicker.textContent = `ℹ️ ${data.message}`;
+      } else if (data.type === 'complete') {
+        progressBarFill.style.width = '100%';
+        stopScan(false);
+        progressStatusText.textContent = `Escaneo finalizado: ${data.total_passed} aprobadas de ${data.total_evaluated} evaluadas`;
+        activityTicker.textContent = `✅ Finalizado con éxito. ${data.total_passed} películas superan el filtro (>500 votos).`;
+      }
+    }
+
+    function stopScan(abortedByUser) {
+      if (state.eventSource) {
+        state.eventSource.close();
+        state.eventSource = null;
+      }
+      state.isScanning = false;
+      btnStart.disabled = false;
+      btnStart.classList.remove('opacity-75');
+      btnStartText.textContent = "Buscar y Filtrar";
+      btnAbort.classList.add('hidden');
+
+      if (abortedByUser) {
+        progressStatusText.textContent = "Escaneo cancelado por el usuario.";
+        activityTicker.textContent = "Operación detenida.";
+      }
+
+      // Check empty states
+      if (state.passedMovies.length === 0) {
+        gridPassed.innerHTML = `
+          <div class="col-span-full py-12 text-center text-gray-400 space-y-2">
+            <div class="w-12 h-12 rounded-xl bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto text-amber-500">
+              <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <p class="text-base font-semibold text-gray-300">Ninguna película superó todos los filtros</p>
+            <p class="text-xs text-gray-500 max-w-md mx-auto">
+              Todas las películas evaluadas tenían menos de 500 votos en IMDb o nota menor a 7. Puedes revisar la pestaña de <strong>Descartadas (${state.discardedMovies.length})</strong> para comprobar las razones de cada una.
+            </p>
+          </div>
+        `;
+        lucide.createIcons();
+      }
+
+      discardedSummaryText.textContent = `${state.discardedMovies.length} descartadas`;
+    }
+
+    // Render an approved movie card
+    function renderPassedMovieCard(m) {
+      // Remove placeholder if present
+      if (gridPassed.querySelector('.col-span-full')) {
+        gridPassed.innerHTML = '';
+      }
+
+      const card = document.createElement('div');
+      card.className = "bg-gray-900 border border-gray-800 hover:border-emerald-500/50 rounded-2xl overflow-hidden flex flex-col transition-all duration-300 hover:shadow-xl hover:shadow-emerald-500/10 group";
+
+      // Poster & badge overlay
+      const posterUrl = m.img || 'https://via.placeholder.com/300x450?text=No+Poster';
+      const genresList = (m.genres || []).slice(0, 3).map(g => `<span class="bg-gray-950/80 backdrop-blur-sm border border-gray-700/80 text-gray-300 px-2 py-0.5 rounded text-[10px] font-medium uppercase">${g}</span>`).join(' ');
+
+      // Magnets list HTML
+      let torrentsHtml = '';
+      if (m.torrents && m.torrents.length > 0) {
+        torrentsHtml = m.torrents.map(t => `
+          <div class="flex items-center justify-between bg-gray-950/70 border border-gray-800 rounded-lg px-2.5 py-1.5 text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-emerald-400">${t.quality}</span>
+              <span class="text-[10px] text-gray-400">${t.type}</span>
+              ${t.size ? `<span class="text-[10px] text-gray-500">(${t.size})</span>` : ''}
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="copyMagnet('${encodeURIComponent(t.magnet)}')" class="p-1 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition" title="Copiar Magnet">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              </button>
+              <a href="${t.magnet}" class="p-1 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition" title="Abrir en Torrent">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          </div>
+        `).join('');
+      } else {
+        torrentsHtml = `<div class="text-xs text-gray-500 italic">Sin torrents directos</div>`;
+      }
+
+      // RT badges
+      let rtBadge = '';
+      if (m.rt_tomatometer !== null || m.rt_popcornmeter !== null) {
+        rtBadge = `
+          <div class="flex items-center gap-2 text-xs font-semibold">
+            ${m.rt_tomatometer !== null ? `
+              <span class="flex items-center gap-1 bg-rose-500/15 text-rose-300 border border-rose-500/30 px-2 py-0.5 rounded-lg" title="Tomatómetro">
+                🍅 ${m.rt_tomatometer}%
+              </span>
+            ` : ''}
+            ${m.rt_popcornmeter !== null ? `
+              <span class="flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-lg" title="Popcornómetro">
+                🍿 ${m.rt_popcornmeter}%
+              </span>
+            ` : ''}
+          </div>
+        `;
+      } else {
+        rtBadge = `<span class="text-[11px] text-gray-500 italic">RT: Sin calificar</span>`;
+      }
+
+      card.innerHTML = `
+        <div class="relative aspect-[2/3] overflow-hidden bg-gray-950">
+          <img src="${posterUrl}" alt="${m.title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://via.placeholder.com/300x450?text=YTS+Movie'">
+          
+          <div class="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent opacity-90"></div>
+
+          <!-- Top rating badge -->
+          <div class="absolute top-2.5 left-2.5 flex flex-col gap-1">
+            <span class="bg-amber-500 text-gray-950 px-2 py-1 rounded-lg text-xs font-extrabold flex items-center gap-1 shadow-lg shadow-amber-500/20">
+              <i data-lucide="star" class="w-3.5 h-3.5 fill-gray-950"></i>
+              <span>${m.imdb_rating.toFixed(1)}</span>
+            </span>
+          </div>
+
+          <!-- Votes overlay -->
+          <div class="absolute top-2.5 right-2.5">
+            <span class="bg-gray-900/90 backdrop-blur-sm border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1">
+              <i data-lucide="users" class="w-3 h-3"></i>
+              <span>${m.imdb_votes.toLocaleString()} votos</span>
+            </span>
+          </div>
+
+          <!-- Bottom genres on poster -->
+          <div class="absolute bottom-2.5 left-2.5 right-2.5 flex flex-wrap gap-1">
+            ${genresList}
+          </div>
+        </div>
+
+        <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="font-bold text-sm text-white group-hover:text-emerald-400 transition line-clamp-1" title="${m.title}">
+                ${m.title}
+              </h3>
+              <span class="text-xs font-mono text-gray-400">${m.year}</span>
+            </div>
+
+            <!-- RT scores row -->
+            <div class="mt-2 flex items-center justify-between">
+              ${rtBadge}
+              ${m.imdb_id ? `
+                <a href="${m.imdb_url}" target="_blank" class="text-[11px] text-gray-400 hover:text-amber-400 flex items-center gap-1 transition">
+                  <span>IMDb</span>
+                  <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+              ` : ''}
+            </div>
+
+            <!-- Plot / Synopsis snippet -->
+            <p class="text-xs text-gray-400 line-clamp-2 mt-2 leading-relaxed">
+              ${m.omdb_plot || m.synopsis || 'Sinopsis no disponible.'}
+            </p>
+          </div>
+
+          <!-- Torrents / Magnets Box -->
+          <div class="space-y-1.5 pt-2 border-t border-gray-800">
+            <div class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 flex items-center justify-between">
+              <span>Enlaces Magnet</span>
+              <span class="text-emerald-400">${m.torrents ? m.torrents.length : 0} disp.</span>
+            </div>
+            <div class="space-y-1">
+              ${torrentsHtml}
+            </div>
+          </div>
+
+          <!-- External Links Footer -->
+          <div class="pt-2 border-t border-gray-800/80 flex items-center justify-between text-[11px] text-gray-400">
+            <a href="${m.yts_url}" target="_blank" class="hover:text-emerald-400 flex items-center gap-1 transition">
+              <span>Ficha YTS</span>
+              <i data-lucide="arrow-up-right" class="w-3 h-3"></i>
+            </a>
+            ${m.rt_url ? `
+              <a href="${m.rt_url}" target="_blank" class="hover:text-rose-400 flex items-center gap-1 transition">
+                <span>Rotten Tomatoes</span>
+                <i data-lucide="arrow-up-right" class="w-3 h-3"></i>
+              </a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+
+      gridPassed.appendChild(card);
+      lucide.createIcons();
+    }
+
+    // Render a row in the discarded table
+    function renderDiscardedTableRow(m) {
+      if (tbodyDiscarded.querySelector('td[colspan]')) {
+        tbodyDiscarded.innerHTML = '';
+      }
+
+      const tr = document.createElement('tr');
+      tr.className = "hover:bg-gray-800/30 transition";
+
+      const posterUrl = m.img || 'https://via.placeholder.com/60x90?text=YTS';
+
+      let rtText = 'N/A';
+      if (m.rt_tomatometer !== null || m.rt_popcornmeter !== null) {
+        rtText = `🍅 ${m.rt_tomatometer || 'N/A'}% | 🍿 ${m.rt_popcornmeter || 'N/A'}%`;
+      }
+
+      tr.innerHTML = `
+        <td class="py-2.5 px-4 flex items-center gap-3">
+          <img src="${posterUrl}" class="w-8 h-12 object-cover rounded bg-gray-950 flex-shrink-0" onerror="this.src='https://via.placeholder.com/60x90?text=YTS'">
+          <div>
+            <a href="${m.yts_url}" target="_blank" class="font-semibold text-white hover:text-emerald-400 transition line-clamp-1">
+              ${m.title}
+            </a>
+            <span class="text-[10px] text-gray-500 font-mono">${m.imdb_id || 'Sin IMDb'}</span>
+          </div>
+        </td>
+        <td class="py-2.5 px-3 font-mono text-gray-400">${m.year || '-'}</td>
+        <td class="py-2.5 px-3">
+          <span class="font-bold ${m.imdb_rating >= 7 ? 'text-amber-400' : 'text-gray-400'}">
+            ⭐ ${m.imdb_rating ? m.imdb_rating.toFixed(1) : (m.yts_rating || 'N/A')}
+          </span>
+        </td>
+        <td class="py-2.5 px-3 font-mono">
+          <span class="${m.imdb_votes > 500 ? 'text-emerald-400 font-bold' : 'text-rose-400'}">
+            ${m.imdb_votes ? m.imdb_votes.toLocaleString() : '0'}
+          </span>
+        </td>
+        <td class="py-2.5 px-3 text-gray-400 text-[11px]">${rtText}</td>
+        <td class="py-2.5 px-4">
+          <span class="inline-block bg-rose-500/10 border border-rose-500/20 text-rose-300 px-2 py-0.5 rounded text-[11px]">
+            ${m.reason}
+          </span>
+        </td>
+      `;
+
+      tbodyDiscarded.appendChild(tr);
+    }
+
+    // Helper: Copy magnet URI to clipboard
+    window.copyMagnet = function(encodedMag) {
+      const mag = decodeURIComponent(encodedMag);
+      navigator.clipboard.writeText(mag).then(() => {
+        showToast("Enlace magnet copiado al portapapeles");
+      }).catch(err => {
+        console.error("Error al copiar magnet:", err);
+      });
+    };
+
+    // Helper: Copy all magnets
+    btnCopyMagnets.addEventListener('click', () => {
+      if (state.passedMovies.length === 0) return;
+      const allMagnets = [];
+      state.passedMovies.forEach(m => {
+        if (m.torrents && m.torrents.length > 0) {
+          allMagnets.push(`# ${m.title} (${m.year})`);
+          m.torrents.forEach(t => allMagnets.push(t.magnet));
+        }
+      });
+
+      if (allMagnets.length === 0) {
+        showToast("No hay enlaces magnet disponibles");
+        return;
+      }
+
+      navigator.clipboard.writeText(allMagnets.join('\n')).then(() => {
+        showToast(`Copiados ${allMagnets.length} enlaces magnet`);
+      });
+    });
+
+    // Helper: Export to CSV
+    btnExportCsv.addEventListener('click', () => {
+      if (state.passedMovies.length === 0) return;
+
+      fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movies: state.passedMovies })
+      })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `peliculas_yts_imdb7_mas500_${getSelectedYear()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        showToast("Archivo CSV descargado con éxito");
+      })
+      .catch(err => {
+        console.error("Error al exportar CSV:", err);
+      });
+    });
+
+    // Toast notification display
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      toastMsg.textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
