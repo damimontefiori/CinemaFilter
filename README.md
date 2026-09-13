@@ -6,6 +6,7 @@ Aplicación web diseñada para navegar y filtrar el catálogo de **YTS** (`https
 2. **Desafío de Calificaciones IMDb**: Solo se incluyen películas con **más de 500 votos reales en IMDb**. Esto descarta falsos estrenos con notas infladas (como notas 8.4 con sólo 20 votos).
 3. **Validación Rotten Tomatoes**: Extracción simultánea del **Tomatómetro** (Crítica) y **Popcornómetro** (Audiencia), exigiendo un mínimo de **60%** en ambos.
 4. **Enlaces Magnet directos**: Extracción directa de los enlaces torrent/magnet (720p, 1080p, 2160p/4K) con botón de copiado rápido y apertura directa en el cliente torrent.
+5. **Autenticación Multi-Clave**: Protección por contraseña mediante variable de entorno `APP_PASSWORDS` para compartir el acceso solo con quien tú decidas.
 
 ---
 
@@ -17,6 +18,24 @@ Para instalar dependencias:
 ```bash
 pip install -r requirements.txt
 ```
+
+---
+
+## Configuración de Claves de Acceso (`APP_PASSWORDS`)
+
+Copia el archivo `.env.example` a `.env`:
+```bash
+copy .env.example .env
+```
+
+Configura tus claves autorizadas separadas por comas en `.env`:
+```env
+APP_PASSWORDS=miClaveSecreta,amigo1,amigo2
+FLASK_SECRET_KEY=clave_secreta_aleatoria_2026
+```
+
+- Si el usuario ingresa cualquiera de esas claves, se le concede acceso inmediato y se mantiene la sesión abierta por 30 días.
+- En servicios como **Render** o **Railway**, simplemente configuras `APP_PASSWORDS` en la sección **Environment Variables** del panel de control.
 
 ---
 

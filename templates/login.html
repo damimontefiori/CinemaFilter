@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso - YTS Cinema Filter</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .glass {
+      background: rgba(17, 24, 39, 0.8);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center p-4 selection:bg-emerald-500 selection:text-white relative overflow-hidden">
+
+  <!-- Ambient Glow Effects -->
+  <div class="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+  <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+  <div class="w-full max-w-md relative z-10">
+    
+    <!-- Login Card -->
+    <div class="bg-gray-900/90 border border-gray-800 glass rounded-3xl p-8 shadow-2xl shadow-black/50 space-y-6">
+      
+      <!-- Brand & Icon -->
+      <div class="text-center space-y-2">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
+          <i data-lucide="film" class="w-7 h-7 text-gray-950 stroke-[2.5]"></i>
+        </div>
+        <h1 class="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-gray-100 to-emerald-400 bg-clip-text text-transparent">
+          Cinema Filter
+        </h1>
+        <p class="text-xs text-gray-400">
+          Ingresa la clave de acceso autorizada para continuar
+        </p>
+      </div>
+
+      <!-- Error Alert -->
+      {% if error %}
+      <div class="bg-rose-500/10 border border-rose-500/30 text-rose-300 px-4 py-3 rounded-xl text-xs flex items-center gap-2.5 animate-shake">
+        <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 text-rose-400"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <!-- Form -->
+      <form method="POST" action="{{ url_for('login', next=request.args.get('next')) }}" class="space-y-4">
+        <div>
+          <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+            Clave de Acceso
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              name="password" 
+              id="password" 
+              required 
+              autofocus 
+              placeholder="Ingresa tu clave..." 
+              class="w-full bg-gray-950/80 border border-gray-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 transition pr-11"
+            >
+            <button 
+              type="button" 
+              id="toggle-pwd" 
+              class="absolute right-3 top-3 text-gray-400 hover:text-gray-200 transition"
+              title="Mostrar/ocultar clave"
+            >
+              <i data-lucide="eye" id="eye-icon" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+
+        <button 
+          type="submit" 
+          class="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-gray-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition transform active:scale-98"
+        >
+          <i data-lucide="lock" class="w-4 h-4 stroke-[2.5]"></i>
+          <span>Entrar a la Aplicación</span>
+        </button>
+      </form>
+
+      <!-- Footer Info -->
+      <div class="pt-4 border-t border-gray-800/80 text-center">
+        <p class="text-[11px] text-gray-500 flex items-center justify-center gap-1.5">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>Acceso privado protegido</span>
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const pwdInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('toggle-pwd');
+    const eyeIcon = document.getElementById('eye-icon');
+
+    toggleBtn.addEventListener('click', () => {
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        eyeIcon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        pwdInput.type = 'password';
+        eyeIcon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

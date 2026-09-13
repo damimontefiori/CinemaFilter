@@ -1,14 +1,101 @@
 """
 Flask Web Application for YTS Movie Filter by IMDb and Rotten Tomatoes.
+Protected by Multi-Key Access Authentication (APP_PASSWORDS).
 """
 
-from flask import Flask, render_template, request, Response, jsonify
-import json
-import csv
+import os
 import io
+import csv
+import json
+from datetime import timedelta
+from flask import Flask, render_template, request, Response, jsonify, session, redirect, url_for
 import scraper
 
+# Helper to load .env file if present
+def load_dotenv_simple():
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        k = k.strip()
+                        v = v.strip().strip('"').strip("'")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+        except Exception:
+            pass
+
+load_dotenv_simple()
+
 app = Flask(__name__)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'cinema-filter-secret-key-2026')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+
+
+def get_allowed_passwords():
+    """
+    Parses comma-separated passwords from APP_PASSWORDS environment variable.
+    Example: APP_PASSWORDS="clave1,clave2,amigo123"
+    """
+    raw = os.environ.get('APP_PASSWORDS', '').strip()
+    if not raw:
+        # Fallback default if not configured
+        return ['admin123']
+    return [p.strip() for p in raw.split(',') if p.strip()]
+
+
+@app.before_request
+def require_authentication():
+    """
+    Guards all routes and APIs behind authentication.
+    """
+    # Allow login, static files, and favicon
+    allowed_endpoints = ['login', 'static']
+    if request.endpoint in allowed_endpoints or request.path.startswith('/static'):
+        return
+
+    # Check session
+    if not session.get('authenticated'):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Autenticación requerida', 'login_required': True}), 401
+        return redirect(url_for('login', next=request.path))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # If already logged in, redirect to index
+    if session.get('authenticated'):
+        return redirect(url_for('index'))
+
+    error = None
+    if request.method == 'POST':
+        entered_password = request.form.get('password', '').strip()
+        allowed = get_allowed_passwords()
+
+        if entered_password in allowed:
+            session.permanent = True
+            session['authenticated'] = True
+
+            next_url = request.args.get('next')
+            # Protect against open redirect vulnerabilities
+            if not next_url or not next_url.startswith('/') or next_url.startswith('//'):
+                next_url = url_for('index')
+
+            return redirect(next_url)
+        else:
+            error = 'Clave de acceso incorrecta. Inténtalo nuevamente.'
+
+    return render_template('login.html', error=error)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 
 GENRES = [
     'all', 'action', 'adventure', 'animation', 'biography', 'comedy',
@@ -97,7 +184,6 @@ def scan_stream():
             max_pages=max_pages,
             max_workers=6
         ):
-            # Format as SSE
             json_data = json.dumps(event, ensure_ascii=False)
             yield f"data: {json_data}\n\n"
 
@@ -194,4 +280,5 @@ def export_csv():
 
 if __name__ == '__main__':
     print("Iniciando servidor de Películas en http://localhost:5000 ...")
+    print(f"Claves autorizadas activas: {len(get_allowed_passwords())}")
     app.run(host='0.0.0.0', port=5000, debug=True)
