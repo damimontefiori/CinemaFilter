@@ -375,12 +375,12 @@
 
   </main>
 
-  <!-- Streaming & Torrent Video Player Modal -->
-  <div id="player-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl sm:rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[95vh]">
+  <!-- Streaming & Video Player Modal (Instant CDN + P2P WebTorrent) -->
+  <div id="player-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-2 sm:p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl sm:rounded-3xl max-w-5xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[96vh]">
       
       <!-- Modal Header -->
-      <div class="p-3.5 sm:p-4 border-b border-gray-800 flex items-center justify-between bg-gray-950/70">
+      <div class="p-3 sm:p-4 border-b border-gray-800 flex items-center justify-between bg-gray-950/80">
         <div class="flex items-center gap-3 overflow-hidden">
           <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 flex-shrink-0">
             <i data-lucide="play" class="w-5 h-5 fill-current"></i>
@@ -388,11 +388,11 @@
           <div class="truncate">
             <div class="flex items-center gap-2">
               <h3 id="player-title" class="font-bold text-sm sm:text-base text-white truncate">Cargando película...</h3>
-              <span id="player-quality-badge" class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded">720p</span>
+              <span id="player-quality-badge" class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded">HD</span>
             </div>
             <p id="player-status-line" class="text-xs text-gray-400 font-mono flex items-center gap-1.5 truncate">
-              <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span id="player-status-text">Iniciando motor de streaming P2P...</span>
+              <span id="player-status-indicator" class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span id="player-status-text">Cargando reproductor instantáneo...</span>
             </p>
           </div>
         </div>
@@ -402,41 +402,85 @@
         </button>
       </div>
 
-      <!-- Video Container -->
+      <!-- Source Selection Tabs Bar -->
+      <div class="bg-gray-950 px-3 sm:px-4 py-2 border-b border-gray-800 flex items-center justify-between gap-2 overflow-x-auto custom-scrollbar">
+        <div class="flex items-center gap-1.5 flex-nowrap text-xs">
+          <span class="text-[11px] uppercase font-bold tracking-wider text-gray-400 mr-1 hidden sm:inline">Servidor:</span>
+          
+          <button id="tab-src-vidlink" onclick="switchPlayerSource('vidlink')" class="player-src-tab px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition text-xs bg-emerald-500 text-gray-950 shadow-md">
+            <i data-lucide="zap" class="w-3.5 h-3.5 fill-current"></i>
+            <span>Instantáneo 1 (VidLink)</span>
+          </button>
+
+          <button id="tab-src-multiembed" onclick="switchPlayerSource('multiembed')" class="player-src-tab px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition text-xs bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700">
+            <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+            <span>Instantáneo 2 (MultiEmbed)</span>
+          </button>
+
+          <button id="tab-src-vidsrc" onclick="switchPlayerSource('vidsrc')" class="player-src-tab px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition text-xs bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700">
+            <i data-lucide="film" class="w-3.5 h-3.5"></i>
+            <span>Instantáneo 3 (VidSrc)</span>
+          </button>
+
+          <button id="tab-src-webtorrent" onclick="switchPlayerSource('webtorrent')" class="player-src-tab px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition text-xs bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700">
+            <i data-lucide="radio" class="w-3.5 h-3.5"></i>
+            <span>P2P Torrent (Navegador)</span>
+          </button>
+        </div>
+
+        <div class="text-[11px] text-emerald-400 font-mono hidden md:flex items-center gap-1">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+          <span>Streaming Directo HD</span>
+        </div>
+      </div>
+
+      <!-- Main Player Viewport Area -->
       <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
         
-        <!-- Native Video Element -->
-        <video id="webtorrent-video" controls playsinline webkit-playsinline x-webkit-airplay="allow" class="w-full h-full object-contain"></video>
+        <!-- View 1: Instant Embed Iframe -->
+        <div id="player-instant-container" class="w-full h-full relative">
+          <iframe id="player-iframe" 
+                  src="" 
+                  class="w-full h-full border-0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowfullscreen>
+          </iframe>
+        </div>
 
-        <!-- Loading Overlay -->
-        <div id="player-loading-overlay" class="absolute inset-0 bg-gray-950/90 flex flex-col items-center justify-center p-6 text-center space-y-4">
-          <div class="relative flex items-center justify-center">
-            <div class="w-16 h-16 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin"></div>
-            <i data-lucide="film" class="w-6 h-6 text-emerald-400 absolute"></i>
-          </div>
-          <div class="space-y-1 max-w-sm">
-            <p id="player-loader-title" class="font-bold text-sm text-white">Conectando con la red P2P...</p>
-            <p id="player-loader-desc" class="text-xs text-gray-400 leading-relaxed">
-              Descargando metadatos e iniciando buffer secuencial para comenzar la reproducción.
-            </p>
-          </div>
-          <div class="flex items-center gap-4 text-xs font-mono text-gray-300 bg-gray-900/90 border border-gray-800 px-4 py-2 rounded-xl">
-            <span class="flex items-center gap-1.5 text-emerald-400">
-              <i data-lucide="users" class="w-4 h-4"></i>
-              <span id="loader-peers-count">0 peers</span>
-            </span>
-            <span class="text-gray-600">|</span>
-            <span class="flex items-center gap-1.5 text-teal-300">
-              <i data-lucide="download-cloud" class="w-4 h-4"></i>
-              <span id="loader-download-speed">0 KB/s</span>
-            </span>
+        <!-- View 2: Native WebTorrent Video & Overlay -->
+        <div id="player-webtorrent-container" class="hidden w-full h-full relative flex items-center justify-center bg-black">
+          <video id="webtorrent-video" controls playsinline webkit-playsinline x-webkit-airplay="allow" class="w-full h-full object-contain"></video>
+
+          <!-- Loading Overlay for WebTorrent -->
+          <div id="player-loading-overlay" class="absolute inset-0 bg-gray-950/90 flex flex-col items-center justify-center p-6 text-center space-y-4">
+            <div class="relative flex items-center justify-center">
+              <div class="w-16 h-16 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 animate-spin"></div>
+              <i data-lucide="film" class="w-6 h-6 text-emerald-400 absolute"></i>
+            </div>
+            <div class="space-y-1 max-w-sm">
+              <p id="player-loader-title" class="font-bold text-sm text-white">Conectando con la red P2P WebRTC...</p>
+              <p id="player-loader-desc" class="text-xs text-gray-400 leading-relaxed">
+                Buscando pares compatibles con el navegador para descargar el buffer inicial.
+              </p>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-mono text-gray-300 bg-gray-900/90 border border-gray-800 px-4 py-2 rounded-xl">
+              <span class="flex items-center gap-1.5 text-emerald-400">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                <span id="loader-peers-count">0 peers</span>
+              </span>
+              <span class="text-gray-600">|</span>
+              <span class="flex items-center gap-1.5 text-teal-300">
+                <i data-lucide="download-cloud" class="w-4 h-4"></i>
+                <span id="loader-download-speed">0 KB/s</span>
+              </span>
+            </div>
           </div>
         </div>
 
       </div>
 
-      <!-- Live Streaming Metrics Bar -->
-      <div class="bg-gray-950/80 border-t border-gray-800/80 px-4 py-3 space-y-2">
+      <!-- WebTorrent Metrics Bar (Only visible when WebTorrent is selected) -->
+      <div id="player-metrics-bar" class="hidden bg-gray-950/90 border-t border-gray-800/80 px-4 py-2.5 space-y-2">
         <div class="flex flex-wrap items-center justify-between text-xs text-gray-400 font-mono gap-2">
           <div class="flex items-center gap-4">
             <span class="flex items-center gap-1 text-emerald-400 font-semibold">
@@ -465,22 +509,21 @@
         </div>
       </div>
 
-      <!-- Speed & Buffer Advisory Banner -->
-      <div id="player-speed-advisory" class="hidden px-4 py-2 bg-amber-500/10 border-t border-b border-amber-500/20 text-amber-300 text-xs flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <i data-lucide="info" class="w-4 h-4 flex-shrink-0 text-amber-400"></i>
-          <span id="advisory-text">Pocos peers WebRTC en navegador. Si el video tarda en iniciar, puedes abrirlo en Stremio a máxima velocidad (TCP/UDP).</span>
+      <!-- Instant Streaming Info Bar (Visible when Instant CDN mode is active) -->
+      <div id="player-instant-infobar" class="bg-gray-950/80 border-t border-gray-800 px-4 py-2 text-xs text-gray-400 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2 text-emerald-300 font-medium">
+          <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
+          <span>Streaming CDN de alta velocidad: inicia en 1-2 segundos sin depender de sembradores torrent.</span>
         </div>
-        <a id="advisory-stremio-btn" href="#" class="bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold px-2.5 py-1 rounded-lg text-[11px] whitespace-nowrap transition flex items-center gap-1">
-          <i data-lucide="zap" class="w-3 h-3 fill-current"></i>
-          <span>Abrir en Stremio</span>
-        </a>
+        <div class="text-[11px] text-gray-400">
+          Usa los controles del reproductor para cambiar audio, subtítulos o poner pantalla completa.
+        </div>
       </div>
 
-      <!-- Action Toolbar (Casting, Direct Download, Stremio, Magnet) -->
+      <!-- Bottom Action Bar -->
       <div class="p-3 sm:p-4 bg-gray-900 flex flex-wrap items-center justify-between gap-2 border-t border-gray-800">
         
-        <!-- Left: Cast / Transmit to TV -->
+        <!-- Left: Cast to TV modal trigger & tips -->
         <div class="flex items-center gap-2">
           <button id="btn-cast-tv" class="bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-gray-950 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-teal-500/20 transition active:scale-95">
             <i data-lucide="tv" class="w-4 h-4 stroke-[2.5]"></i>
@@ -489,17 +532,17 @@
           <span class="hidden sm:inline text-[11px] text-gray-400">(Chromecast / AirPlay / Smart TV)</span>
         </div>
 
-        <!-- Right: Download to disk, Open in Stremio, Copy Magnet -->
+        <!-- Right: Stremio, Download to disk, Magnet -->
         <div class="flex flex-wrap items-center gap-2">
+          <a id="btn-open-stremio" href="#" class="bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-gray-950 border border-amber-500/30 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm" title="Abrir en reproductor Stremio a máxima velocidad P2P (TCP/UDP)">
+            <i data-lucide="play-circle" class="w-3.5 h-3.5 fill-current"></i>
+            <span>Abrir en Stremio</span>
+          </a>
+
           <button id="btn-download-file" class="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95" title="Guardar archivo MP4 en la carpeta Descargas del navegador">
             <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
-            <span>Guardar en Disco</span>
+            <span id="btn-download-file-text">Guardar en Disco</span>
           </button>
-          
-          <a id="btn-open-stremio" href="#" class="bg-gray-800 hover:bg-gray-700 text-gray-300 border border-gray-700 font-medium px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition" title="Abrir en reproductor Stremio con streaming instantáneo">
-            <i data-lucide="play-circle" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span>Stremio</span>
-          </a>
 
           <button id="btn-copy-player-magnet" class="bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white border border-gray-700 p-2 rounded-xl text-xs transition" title="Copiar enlace magnet">
             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
@@ -510,6 +553,62 @@
 
     </div>
   </div>
+
+  <!-- Cast to TV Guidance Modal -->
+  <div id="cast-instructions-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-800">
+        <div class="flex items-center gap-2.5 text-white font-bold">
+          <i data-lucide="tv" class="w-5 h-5 text-emerald-400"></i>
+          <span>Cómo transmitir a tu TV</span>
+        </div>
+        <button id="btn-close-cast-modal" class="p-1.5 text-gray-400 hover:text-white rounded-lg transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-gray-300">
+        <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80 space-y-1">
+          <p class="font-bold text-emerald-400 flex items-center gap-1.5">
+            <i data-lucide="smartphone" class="w-4 h-4"></i>
+            <span>1. Desde el móvil (iPhone / Android)</span>
+          </p>
+          <p class="text-gray-400 leading-relaxed">
+            - En <strong>iPhone / Safari</strong>: En el reproductor toca pantalla completa y pulsa el icono de <strong>AirPlay</strong>.<br>
+            - En <strong>Android / Chrome</strong>: Toca los 3 puntos del navegador y elige <strong>"Enviar..."</strong> o usa el icono de Chromecast dentro del reproductor.
+          </p>
+        </div>
+
+        <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80 space-y-1">
+          <p class="font-bold text-teal-400 flex items-center gap-1.5">
+            <i data-lucide="monitor" class="w-4 h-4"></i>
+            <span>2. Directo en tu Smart TV</span>
+          </p>
+          <p class="text-gray-400 leading-relaxed">
+            Abre el navegador de tu Smart TV (Samsung, LG, Google TV) e ingresa directamente a esta dirección en tu misma red WiFi:<br>
+            <strong id="cast-local-url" class="text-white font-mono text-[11px] bg-gray-900 px-2 py-1 rounded border border-gray-700 block mt-1 select-all">http://localhost:5000</strong>
+          </p>
+        </div>
+
+        <div class="bg-gray-950 p-3.5 rounded-xl border border-gray-800/80 space-y-1">
+          <p class="font-bold text-amber-400 flex items-center gap-1.5">
+            <i data-lucide="play-circle" class="w-4 h-4"></i>
+            <span>3. Con Stremio en TV / Móvil</span>
+          </p>
+          <p class="text-gray-400 leading-relaxed">
+            Pulsa el botón <strong>"Abrir en Stremio"</strong>. Stremio tiene transmisión nativa a Chromecast y Smart TVs con aceleración por hardware.
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button id="btn-understood-cast" class="w-full bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold py-2.5 rounded-xl text-xs transition">
+          ¡Entendido!
+        </button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Toast Notification -->
   <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-gray-900 border border-emerald-500/50 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
@@ -788,7 +887,7 @@
               ${t.size ? `<span class="text-[10px] text-gray-500">(${t.size})</span>` : ''}
             </div>
             <div class="flex items-center gap-1">
-              <button onclick="openPlayer('${encodeURIComponent(m.title)}', '${m.year}', '${t.quality}', '${encodeURIComponent(t.magnet)}', '${encodeURIComponent(m.img || '')}')" class="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-gray-950 font-bold rounded text-[11px] transition" title="Reproducir en el navegador">
+              <button onclick="openPlayer('${encodeURIComponent(m.title)}', '${m.year}', '${t.quality}', '${encodeURIComponent(t.magnet)}', '${encodeURIComponent(m.img || '')}', '${m.imdb_id || ''}')" class="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-gray-950 font-bold rounded text-[11px] transition" title="Reproducir en el navegador">
                 <i data-lucide="play" class="w-3 h-3 fill-current"></i>
                 <span>Ver</span>
               </button>
@@ -889,12 +988,10 @@
             <div class="space-y-1">
               ${torrentsHtml}
             </div>
-            ${m.torrents && m.torrents.length > 0 ? `
-              <button onclick="openPlayer('${encodeURIComponent(m.title)}', '${m.year}', '${m.torrents[0].quality}', '${encodeURIComponent(m.torrents[0].magnet)}', '${encodeURIComponent(m.img || '')}')" class="w-full mt-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-gray-950 font-extrabold py-2 px-3 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition active:scale-98 text-xs">
-                <i data-lucide="play" class="w-3.5 h-3.5 fill-gray-950"></i>
-                <span>Ver Película en Navegador</span>
-              </button>
-            ` : ''}
+            <button onclick="openPlayer('${encodeURIComponent(m.title)}', '${m.year}', '${m.torrents && m.torrents.length > 0 ? m.torrents[0].quality : 'HD'}', '${encodeURIComponent(m.torrents && m.torrents.length > 0 ? m.torrents[0].magnet : '')}', '${encodeURIComponent(m.img || '')}', '${m.imdb_id || ''}')" class="w-full mt-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-gray-950 font-extrabold py-2 px-3 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition active:scale-98 text-xs">
+              <i data-lucide="play" class="w-3.5 h-3.5 fill-gray-950"></i>
+              <span>Ver Película (Streaming Inmediato)</span>
+            </button>
           </div>
 
           <!-- External Links Footer -->
@@ -1036,11 +1133,16 @@
     }
 
     // -------------------------------------------------------------
-    // WebTorrent In-Browser Streaming & Casting Controller
+    // Universal Player Controller (Instant CDN Streaming + P2P WebTorrent)
     // -------------------------------------------------------------
     let wtClient = null;
     let currentTorrent = null;
     let currentFile = null;
+    let currentImdbId = '';
+    let currentTitle = '';
+    let currentYear = '';
+    let currentMagnet = '';
+    let currentActiveSource = 'vidlink';
 
     const WEBRTC_TRACKERS = [
       'wss://tracker.openwebtorrent.com',
@@ -1053,6 +1155,7 @@
     ];
 
     function prepareWebTorrentMagnet(rawMagnet) {
+      if (!rawMagnet) return '';
       let mag = rawMagnet;
       WEBRTC_TRACKERS.forEach(tr => {
         const trParam = `&tr=${encodeURIComponent(tr)}`;
@@ -1063,23 +1166,151 @@
       return mag;
     }
 
-    window.openPlayer = function(encodedTitle, year, quality, encodedMagnet, encodedImg) {
-      const title = decodeURIComponent(encodedTitle);
-      const rawMagnet = decodeURIComponent(encodedMagnet);
-      const qualityText = quality || '720p';
+    window.openPlayer = function(encodedTitle, year, quality, encodedMagnet, encodedImg, imdbId) {
+      currentTitle = decodeURIComponent(encodedTitle || '');
+      currentYear = year || '';
+      currentMagnet = decodeURIComponent(encodedMagnet || '');
+      currentImdbId = imdbId || '';
+      const qualityText = quality || 'HD';
 
-      if (!rawMagnet || !rawMagnet.startsWith('magnet:?')) {
-        showToast('Enlace magnet no válido');
-        return;
+      // Set header info
+      document.getElementById('player-title').textContent = `${currentTitle} (${currentYear})`;
+      document.getElementById('player-quality-badge').textContent = qualityText;
+
+      // Stremio button & magnet copy
+      const stremioBtn = document.getElementById('btn-open-stremio');
+      const copyMagBtn = document.getElementById('btn-copy-player-magnet');
+      if (currentMagnet && currentMagnet.startsWith('magnet:?')) {
+        const stremioUri = currentMagnet.replace(/^magnet:\?/, 'stremio://');
+        stremioBtn.href = stremioUri;
+        stremioBtn.classList.remove('opacity-40', 'pointer-events-none');
+        copyMagBtn.classList.remove('hidden');
+        copyMagBtn.onclick = function() {
+          copyMagnet(encodeURIComponent(currentMagnet));
+        };
+      } else {
+        stremioBtn.href = '#';
+        stremioBtn.classList.add('opacity-40', 'pointer-events-none');
+        copyMagBtn.classList.add('hidden');
       }
 
-      // Reset modal UI elements
-      document.getElementById('player-title').textContent = `${title} (${year})`;
-      document.getElementById('player-quality-badge').textContent = qualityText;
-      document.getElementById('player-status-text').textContent = 'Conectando con la red P2P...';
-      document.getElementById('player-loader-title').textContent = 'Conectando con la red P2P...';
-      document.getElementById('player-loader-desc').textContent = 'Descargando metadatos e iniciando buffer secuencial para comenzar la reproducción.';
-      document.getElementById('player-loading-overlay').classList.remove('hidden');
+      // Show modal
+      const modal = document.getElementById('player-modal');
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+
+      // Prioritize instant CDN playback if IMDb ID is available
+      if (currentImdbId) {
+        switchPlayerSource('vidlink');
+      } else {
+        switchPlayerSource('webtorrent');
+      }
+    };
+
+    window.switchPlayerSource = function(src) {
+      currentActiveSource = src;
+
+      // Update tab button styles
+      const tabKeys = ['vidlink', 'multiembed', 'vidsrc', 'webtorrent'];
+      tabKeys.forEach(k => {
+        const btn = document.getElementById(`tab-src-${k}`);
+        if (!btn) return;
+        if (k === src) {
+          btn.className = "player-src-tab px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition text-xs bg-emerald-500 text-gray-950 shadow-md";
+        } else {
+          btn.className = "player-src-tab px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition text-xs bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700";
+        }
+      });
+
+      const instantContainer = document.getElementById('player-instant-container');
+      const webtorrentContainer = document.getElementById('player-webtorrent-container');
+      const metricsBar = document.getElementById('player-metrics-bar');
+      const instantInfoBar = document.getElementById('player-instant-infobar');
+      const playerIframe = document.getElementById('player-iframe');
+      const statusText = document.getElementById('player-status-text');
+
+      if (src === 'vidlink') {
+        stopWebTorrent();
+        instantContainer.classList.remove('hidden');
+        webtorrentContainer.classList.add('hidden');
+        metricsBar.classList.add('hidden');
+        instantInfoBar.classList.remove('hidden');
+
+        statusText.textContent = 'Conectado a Servidor 1 (VidLink CDN HD - Ultra Rápido)';
+        if (currentImdbId) {
+          playerIframe.src = `https://vidlink.pro/movie/${currentImdbId}`;
+        } else {
+          statusText.textContent = 'Sin IMDb ID. Cambia a la pestaña P2P Torrent.';
+        }
+      } else if (src === 'multiembed') {
+        stopWebTorrent();
+        instantContainer.classList.remove('hidden');
+        webtorrentContainer.classList.add('hidden');
+        metricsBar.classList.add('hidden');
+        instantInfoBar.classList.remove('hidden');
+
+        statusText.textContent = 'Conectado a Servidor 2 (MultiEmbed - Multi-fuentes)';
+        if (currentImdbId) {
+          playerIframe.src = `https://multiembed.mov/?video_id=${currentImdbId}`;
+        } else {
+          statusText.textContent = 'Sin IMDb ID. Cambia a la pestaña P2P Torrent.';
+        }
+      } else if (src === 'vidsrc') {
+        stopWebTorrent();
+        instantContainer.classList.remove('hidden');
+        webtorrentContainer.classList.add('hidden');
+        metricsBar.classList.add('hidden');
+        instantInfoBar.classList.remove('hidden');
+
+        statusText.textContent = 'Conectado a Servidor 3 (VidSrc HD)';
+        if (currentImdbId) {
+          playerIframe.src = `https://vidsrc.me/embed/movie?imdb=${currentImdbId}`;
+        } else {
+          statusText.textContent = 'Sin IMDb ID. Cambia a la pestaña P2P Torrent.';
+        }
+      } else if (src === 'webtorrent') {
+        playerIframe.src = 'about:blank';
+        instantContainer.classList.add('hidden');
+        instantInfoBar.classList.add('hidden');
+        webtorrentContainer.classList.remove('hidden');
+        metricsBar.classList.remove('hidden');
+
+        if (!currentMagnet || !currentMagnet.startsWith('magnet:?')) {
+          statusText.textContent = 'Esta película no dispone de magnet directo.';
+          showToast('Esta película no dispone de magnet directo.');
+          return;
+        }
+
+        startWebTorrentStream(currentMagnet);
+      }
+      lucide.createIcons();
+    };
+
+    function stopWebTorrent() {
+      const videoEl = document.getElementById('webtorrent-video');
+      videoEl.pause();
+      videoEl.removeAttribute('src');
+      videoEl.load();
+
+      if (currentTorrent) {
+        try {
+          currentTorrent.destroy();
+        } catch (e) {}
+        currentTorrent = null;
+      }
+      currentFile = null;
+    }
+
+    function startWebTorrentStream(rawMagnet) {
+      stopWebTorrent();
+
+      const videoEl = document.getElementById('webtorrent-video');
+      const overlay = document.getElementById('player-loading-overlay');
+      overlay.classList.remove('hidden');
+
+      document.getElementById('player-status-text').textContent = 'Conectando con la red P2P WebRTC...';
+      document.getElementById('player-loader-title').textContent = 'Conectando con la red P2P WebRTC...';
+      document.getElementById('player-loader-desc').textContent = 'Buscando pares compatibles con el navegador para descargar el buffer inicial.';
       document.getElementById('player-progress-bar').style.width = '0%';
       document.getElementById('metric-progress-pct').textContent = '0%';
       document.getElementById('metric-downloaded-size').textContent = '(0 MB)';
@@ -1088,43 +1319,7 @@
       document.getElementById('metric-peers').textContent = '0 peers';
       document.getElementById('loader-peers-count').textContent = '0 peers';
       document.getElementById('loader-download-speed').textContent = '0 KB/s';
-      document.getElementById('player-speed-advisory').classList.add('hidden');
 
-      // Stremio fallback links
-      const stremioLink = document.getElementById('btn-open-stremio');
-      const stremioUri = rawMagnet.replace(/^magnet:\?/, 'stremio://');
-      stremioLink.href = stremioUri;
-      document.getElementById('advisory-stremio-btn').href = stremioUri;
-
-      // Copy magnet inside modal
-      document.getElementById('btn-copy-player-magnet').onclick = function() {
-        copyMagnet(encodedMagnet);
-      };
-
-      // Show modal
-      const modal = document.getElementById('player-modal');
-      modal.classList.remove('hidden');
-      lucide.createIcons();
-
-      // Video element reference
-      const videoEl = document.getElementById('webtorrent-video');
-      videoEl.pause();
-      videoEl.removeAttribute('src');
-      videoEl.load();
-
-      // Attach video player lifecycle listeners
-      videoEl.onwaiting = function() {
-        document.getElementById('player-status-text').textContent = 'Cargando buffer de video...';
-      };
-      videoEl.onplaying = function() {
-        document.getElementById('player-loading-overlay').classList.add('hidden');
-        document.getElementById('player-status-text').textContent = 'Reproduciendo en directo';
-      };
-      videoEl.onstalled = function() {
-        document.getElementById('player-status-text').textContent = 'Buffer bajo, descargando piezas...';
-      };
-
-      // Initialize WebTorrent client
       if (!wtClient) {
         if (typeof WebTorrent === 'undefined') {
           showToast('Error cargando librería WebTorrent');
@@ -1136,15 +1331,6 @@
         });
       }
 
-      // Clean up previous torrent if active
-      if (currentTorrent) {
-        try {
-          currentTorrent.destroy();
-        } catch (e) {}
-        currentTorrent = null;
-      }
-      currentFile = null;
-
       const magnetReady = prepareWebTorrentMagnet(rawMagnet);
 
       try {
@@ -1153,7 +1339,6 @@
           document.getElementById('player-status-text').textContent = 'Metadatos obtenidos. Priorizando inicio del video...';
           document.getElementById('player-loader-title').textContent = 'Metadatos recibidos';
 
-          // Select primary video file
           const videoFile = torrent.files.find(f => 
             f.name.endsWith('.mp4') || f.name.endsWith('.mkv') || f.name.endsWith('.webm') || f.name.endsWith('.avi')
           ) || torrent.files[0];
@@ -1165,8 +1350,6 @@
 
           currentFile = videoFile;
           
-          // STRICT SEQUENTIAL PRIORITY on the beginning of the file!
-          // This guarantees piece 0, 1, 2... arrive FIRST before random middle chunks
           videoFile.select();
           if (typeof videoFile._startPiece === 'number') {
             const startP = videoFile._startPiece;
@@ -1175,22 +1358,18 @@
             torrent.select(startP, startP + initialPieces, 1);
           }
 
-          document.getElementById('player-status-text').textContent = `Iniciando streaming: ${videoFile.name}`;
+          document.getElementById('player-status-text').textContent = `Iniciando streaming P2P: ${videoFile.name}`;
 
-          // Stream into video element
           videoFile.renderTo(videoEl, { autoplay: true }, function(err) {
-            if (err) {
-              console.warn('renderTo notice:', err);
-            }
+            if (err) console.warn('renderTo notice:', err);
           });
 
           videoEl.oncanplay = function() {
-            document.getElementById('player-loading-overlay').classList.add('hidden');
-            document.getElementById('player-status-text').textContent = 'Reproduciendo en directo';
+            overlay.classList.add('hidden');
+            document.getElementById('player-status-text').textContent = 'Reproduciendo en directo (P2P)';
             videoEl.play().catch(() => {});
           };
 
-          // Monitor download speed, buffer and peers
           torrent.on('download', function() {
             const pct = (torrent.progress * 100).toFixed(1);
             const dlSpeed = (torrent.downloadSpeed / 1024 / 1024).toFixed(2);
@@ -1207,17 +1386,8 @@
             document.getElementById('loader-peers-count').textContent = `${torrent.numPeers} peers`;
             document.getElementById('loader-download-speed').textContent = `${dlSpeed} MB/s`;
 
-            // Check if speed/peers are low to advise user
-            const advisory = document.getElementById('player-speed-advisory');
-            if (torrent.numPeers <= 1 || (torrent.downloadSpeed > 0 && torrent.downloadSpeed < 100 * 1024)) {
-              advisory.classList.remove('hidden');
-            } else {
-              advisory.classList.add('hidden');
-            }
-
-            // Hide overlay if video has canplay or enough buffer
             if (torrent.progress > 0.02 || (videoEl.buffered && videoEl.buffered.length > 0)) {
-              document.getElementById('player-loading-overlay').classList.add('hidden');
+              overlay.classList.add('hidden');
             }
           });
 
@@ -1236,9 +1406,42 @@
         console.error('Error adding torrent:', err);
         showToast('Error al iniciar torrent: ' + err.message);
       }
+    }
 
-      // Download file to disk button
-      document.getElementById('btn-download-file').onclick = function() {
+    // Cast Modal logic
+    const castModal = document.getElementById('cast-instructions-modal');
+    document.getElementById('btn-cast-tv').onclick = function() {
+      const videoEl = document.getElementById('webtorrent-video');
+      if (currentActiveSource === 'webtorrent' && videoEl.remote && typeof videoEl.remote.prompt === 'function') {
+        videoEl.remote.prompt().catch(() => {
+          showCastModal();
+        });
+      } else if (currentActiveSource === 'webtorrent' && videoEl.webkitShowPlaybackTargetPicker) {
+        videoEl.webkitShowPlaybackTargetPicker();
+      } else {
+        showCastModal();
+      }
+    };
+
+    function showCastModal() {
+      const castUrlEl = document.getElementById('cast-local-url');
+      if (castUrlEl) {
+        castUrlEl.textContent = window.location.origin;
+      }
+      castModal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    document.getElementById('btn-close-cast-modal').onclick = function() {
+      castModal.classList.add('hidden');
+    };
+    document.getElementById('btn-understood-cast').onclick = function() {
+      castModal.classList.add('hidden');
+    };
+
+    // Download file to disk button
+    document.getElementById('btn-download-file').onclick = function() {
+      if (currentActiveSource === 'webtorrent') {
         if (!currentFile) {
           showToast('Esperando a recibir metadatos del video...');
           return;
@@ -1257,43 +1460,20 @@
           a.remove();
           showToast('Archivo guardado en Descargas');
         });
-      };
-
-      // Cast to TV button (Chromecast / AirPlay / Smart TV)
-      document.getElementById('btn-cast-tv').onclick = function() {
-        if (videoEl.remote && typeof videoEl.remote.prompt === 'function') {
-          videoEl.remote.prompt().then(() => {
-            showToast('Conectando con la TV...');
-          }).catch((err) => {
-            console.log('Cast prompt cancelado o no disponible:', err);
-            showToast('Selecciona tu Smart TV / Chromecast en la pantalla');
-          });
-        } else if (videoEl.webkitShowPlaybackTargetPicker) {
-          // iOS Safari AirPlay
-          videoEl.webkitShowPlaybackTargetPicker();
-        } else {
-          showToast('Usa el botón de Cast / AirPlay en los controles del reproductor');
-        }
-      };
+      } else {
+        showToast('Para descargar a disco usa Stremio o copia el enlace Magnet');
+      }
     };
 
-    // Close Player Modal & Destroy active torrent to save bandwidth
+    // Close Player Modal
     function closePlayer() {
       const modal = document.getElementById('player-modal');
       modal.classList.add('hidden');
 
-      const videoEl = document.getElementById('webtorrent-video');
-      videoEl.pause();
-      videoEl.removeAttribute('src');
-      videoEl.load();
+      const playerIframe = document.getElementById('player-iframe');
+      playerIframe.src = 'about:blank';
 
-      if (currentTorrent) {
-        try {
-          currentTorrent.destroy();
-        } catch (e) {}
-        currentTorrent = null;
-      }
-      currentFile = null;
+      stopWebTorrent();
     }
 
     document.getElementById('btn-close-player').addEventListener('click', closePlayer);
