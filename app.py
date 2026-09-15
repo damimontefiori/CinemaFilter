@@ -10,6 +10,8 @@ import json
 from datetime import timedelta
 from flask import Flask, render_template, request, Response, jsonify, session, redirect, url_for
 import scraper
+import subtitles
+import latino_sources
 
 # Helper to load .env file if present
 def load_dotenv_simple():
@@ -276,6 +278,59 @@ def export_csv():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment;filename=peliculas_filtradas_yts.csv"}
     )
+
+
+@app.route('/api/subtitles/<imdb_id>')
+def get_subtitles_info(imdb_id):
+    """Returns metadata for available Spanish subtitles for the given IMDb ID."""
+    subs = subtitles.get_spanish_subtitles(imdb_id)
+    return jsonify({'imdb_id': imdb_id, 'subtitles': subs})
+
+
+@app.route('/api/subtitles/vtt/<imdb_id>')
+def get_subtitles_vtt(imdb_id):
+    """Returns WebVTT subtitles format for HTML5 video tracks."""
+    srt_content, _ = subtitles.download_first_spanish_srt(imdb_id)
+    if not srt_content:
+        return Response("WEBVTT\n\n", mimetype="text/vtt")
+    vtt_content = subtitles.srt_to_vtt(srt_content)
+    return Response(
+        vtt_content,
+        mimetype="text/vtt",
+        headers={
+            "Content-Type": "text/vtt; charset=utf-8",
+            "Access-Control-Allow-Origin": "*"
+        }
+    )
+
+
+@app.route('/api/subtitles/download/<imdb_id>')
+def download_subtitles_srt(imdb_id):
+    """Downloads raw .srt file directly."""
+    srt_content, fname = subtitles.download_first_spanish_srt(imdb_id)
+    if not srt_content:
+        return jsonify({'error': 'No se encontraron subtítulos en español para esta película'}), 404
+    download_name = fname or f"{imdb_id}_es.srt"
+    return Response(
+        srt_content.encode('utf-8'),
+        mimetype="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename=\"{download_name}\""}
+    )
+
+
+@app.route('/api/latino/<imdb_id>')
+def get_latino_sources(imdb_id):
+    """Returns Latin Spanish stream link and DonTorrent downloads."""
+    title = request.args.get('title', '')
+    year = request.args.get('year', '')
+    stream_url = latino_sources.get_latino_stream_url(imdb_id)
+    dontorrent_items = latino_sources.search_dontorrent(title, year)
+    return jsonify({
+        'imdb_id': imdb_id,
+        'title': title,
+        'stream_url': stream_url,
+        'dontorrent': dontorrent_items
+    })
 
 
 if __name__ == '__main__':

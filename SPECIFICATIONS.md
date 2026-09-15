@@ -97,20 +97,40 @@ Aprovecha el **IMDb ID** (`tt...`) extraído de cada película aprobada para con
 
 ---
 
-## 5. Próximas Extensiones Planificadas
+## 5. Módulo de Subtítulos y Audio Latino (Implementado)
 
-1. **Subtítulos en Español para Películas en Inglés**:
-   - Integración con API de **OpenSubtitles** y **YIFY Subtitles** mediante endpoint backend `/api/subtitles?imdb=...`.
-   - Inyección dinámica de pistas `<track kind="subtitles" srclang="es" label="Español">` en el reproductor.
-   - Botón directo para descargar archivo `.srt` en español sincronizado.
+### 5.1 Subtítulos en Español Sincronizados (`subtitles.py`)
+- **Scraper de YIFY Subtitles**: Scrapea `https://yifysubtitles.ch/movie-imdb/{imdb_id}` para obtener subtítulos en español específicamente sincronizados con los releases de YTS.
+- **Conversor SRT a WebVTT**: Convierte en memoria los subtítulos `.srt` extraídos a formato WebVTT estándar (`WEBVTT` + timestamps `00:00:00.000 --> 00:00:00.000`).
+- **Endpoints de Subtítulos**:
+  - `GET /api/subtitles/<imdb_id>`: Metadatos de subtítulos disponibles en español.
+  - `GET /api/subtitles/vtt/<imdb_id>`: Sirve la pista WebVTT directamente con cabecera `Content-Type: text/vtt; charset=utf-8` para la etiqueta `<track>` del reproductor HTML5.
+  - `GET /api/subtitles/download/<imdb_id>`: Descarga directa del archivo `.srt` con cabecera `Content-Disposition: attachment`.
+- **Integración UI**:
+  - Botón **`[Subtítulos ES]`** en cada tarjeta de película aprobada para descargar el `.srt` en 1 clic.
+  - Botón **`[Subtítulo .SRT]`** en la barra de herramientas del reproductor modal.
+  - Pista `<track id="player-sub-track">` cargada automáticamente en el reproductor de video.
 
-2. **Fuentes de Películas con Doblaje en Español Latino**:
-   - Integración de fuentes dedicadas a español latino:
-     - **Cinecalidad** (espejos activos validados: `cine-calidad.com`, `cinecalidad.com.de`, `cinecalidad.com.im`).
-     - **Hacktorrent / Hackstore** (`hacktorrent.cc`, `hackstore2.com`) para versiones Dual Audio (Latino + Inglés).
-     - Trackers con etiquetas `[Dual Audio Latino]`.
-   - Filtro / Selector en la interfaz:
-     - `Todos (Original + Doblaje Latino)`
-     - `Solo con Audio Latino`
-     - `Audio Original con Subtítulos en Español`
-   - Badge visual en la ficha de película: `[🇲🇽 Audio Latino]` cuando la versión doblada esté disponible.
+### 5.2 Streaming y Torrents con Audio Latino (`latino_sources.py`)
+- **Streaming MultiEmbed con Opción de Audio Latino**:
+  - Pestaña **`[🇲🇽 Audio Latino]`** en el reproductor modal (`https://multiembed.mov/?video_id={imdb_id}`).
+  - Botón de acceso directo **`[Audio Latino]`** en cada tarjeta aprobada.
+  - Incluye servidor nativo con pistas dobladas al español latino para estrenos internacionales.
+- **Scraper DonTorrent**:
+  - Búsqueda mediante POST a `https://www21.dontorrent.link/peliculas/buscar` con detección dinámica de espejos y resolución de redirecciones.
+  - Extracción de enlaces `.torrent` limpios en calidades 4K, 1080p y 720p.
+  - Endpoint `GET /api/latino/<imdb_id>?title={title}&year={year}`.
+
+---
+
+## 6. Diagnóstico de Seguridad de Fuentes Externas
+
+> [!CAUTION]
+> **Honeypot detectado en `cinecalidades.com`**:
+> - La investigación técnica del código fuente (`/download.js`) reveló que los botones de descarga redirigen a ejecutables empaquetados (`https://megaup.net/.../setup74ujii8tij4.zip`) para distribuir adware/malware.
+> - El sitio no contiene torrents reales de video ni streams legítimos. Fue descartado de la integración para proteger la seguridad del usuario.
+>
+> **Dominio inaccesible `cinecalidad.am`**:
+> - El dominio original `cinecalidad.am` se encuentra dado de baja (`[Errno 11001] getaddrinfo failed`).
+> - Se reemplazó por fuentes verificadas y seguras: **DonTorrent** (`dontorrent.link`) y **MultiEmbed** con selector de audio latino `[LAT]`.
+
