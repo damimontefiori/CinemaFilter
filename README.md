@@ -1,12 +1,21 @@
-# YTS Cinema Filter - IMDb +7 & >500 Votos + Rotten Tomatoes
+# YTS Cinema Filter - IMDb +7 & >500 Votos + Streaming en Navegador & Cast a TV
 
-Aplicación web diseñada para navegar y filtrar el catálogo de **YTS** (`https://en.yts-official.biz/browse-movies`), aplicando un control estricto de calidad que el sitio original no ofrece:
+Aplicación web diseñada para navegar y filtrar el catálogo de **YTS** (`https://en.yts-official.biz/browse-movies`), aplicando un control estricto de calidad que el sitio original no ofrece, con **reproducción en streaming directamente en el navegador** y soporte para **transmitir a Smart TV / Chromecast / AirPlay**:
 
 1. **Rating IMDb $\ge 7.0$**: Se descarta cualquier película con nota menor a 7.
-2. **Desafío de Calificaciones IMDb**: Solo se incluyen películas con **más de 500 votos reales en IMDb**. Esto descarta falsos estrenos con notas infladas (como notas 8.4 con sólo 20 votos).
+2. **Desafío de Calificaciones IMDb**: Solo se incluyen películas con **más de 500 votos reales en IMDb**, descartando falsos estrenos con notas infladas por pocas personas.
 3. **Validación Rotten Tomatoes**: Extracción simultánea del **Tomatómetro** (Crítica) y **Popcornómetro** (Audiencia), exigiendo un mínimo de **60%** en ambos.
-4. **Enlaces Magnet directos**: Extracción directa de los enlaces torrent/magnet (720p, 1080p, 2160p/4K) con botón de copiado rápido y apertura directa en el cliente torrent.
-5. **Autenticación Multi-Clave**: Protección por contraseña mediante variable de entorno `APP_PASSWORDS` para compartir el acceso solo con quien tú decidas.
+4. **Streaming en el Navegador (WebTorrent)**:
+   - Mira la película directamente en tu navegador sin esperar a que termine de descargar (reproducción secuencial con buffer en memoria).
+   - Métricas P2P en vivo: velocidad de descarga, peers y barra de progreso.
+5. **Transmitir a la TV (Cast / AirPlay)**:
+   - Botón directo para enviar la transmisión a cualquier **Smart TV, Chromecast, Android TV o Apple TV (AirPlay)** en la misma red Wi-Fi.
+6. **Descarga Directa al Disco**:
+   - Guarda el archivo `.mp4` en tu carpeta tradicional de Descargas del navegador con 1 clic, sin necesidad de clientes torrent externos.
+7. **Descarga Tradicional Magnet / Torrent**:
+   - Mantiene intactos los botones para copiar enlaces magnet y abrir en clientes torrent habituales (qBittorrent, uTorrent, etc.) en calidades 720p, 1080p y 4K.
+8. **Autenticación Multi-Clave (`APP_PASSWORDS`)**:
+   - Protección por contraseña para compartir el acceso solo con quien tú decidas.
 
 ---
 
@@ -34,43 +43,43 @@ APP_PASSWORDS=miClaveSecreta,amigo1,amigo2
 FLASK_SECRET_KEY=clave_secreta_aleatoria_2026
 ```
 
-- Si el usuario ingresa cualquiera de esas claves, se le concede acceso inmediato y se mantiene la sesión abierta por 30 días.
-- En servicios como **Render** o **Railway**, simplemente configuras `APP_PASSWORDS` en la sección **Environment Variables** del panel de control.
-
 ---
 
-## Cómo Ejecutar la Aplicación
+## Cómo Ejecutar y Acceder desde tu Móvil o PC
 
-Ejecuta el servidor con:
+### 1. Desde tu PC:
+Ejecuta:
 ```bash
 python app.py
 ```
-O simplemente haciendo doble click en `run.bat`.
+O haz doble clic en `run.bat`.
+Abre en tu navegador: **`http://localhost:5000`**
 
-Luego abre en tu navegador:
-👉 **[http://localhost:5000](http://localhost:5000)**
+### 2. Desde tu Móvil en la misma red Wi-Fi:
+Cuando la aplicación arranca, muestra la IP local de tu PC (por ejemplo `http://192.168.1.118:5000`):
+1. Conecta tu móvil a la misma red Wi-Fi que tu PC.
+2. Abre el navegador en tu móvil (Chrome en Android o Safari en iPhone) e ingresa:
+   👉 **`http://TU_IP_LOCAL:5000`** (ejemplo: `http://192.168.1.118:5000`)
+3. Ingresa tu clave de acceso.
+4. Elige una película, presiona **"Ver Película en Navegador"** y luego pulsa **"Transmitir a la TV"** para verla en tu Smart TV o Chromecast.
 
 ---
 
-## Características de la WebApp
+## Cómo Publicar en la Nube (Render.com Gratis)
 
-- **Filtros Personalizables**:
-  - **Año**: 2026 (por default), 2025, 2024, 2023, 2022 o cualquier año personalizado.
-  - **Género**: Todos (`all`), Acción, Ciencia Ficción, Comedia, Drama, Terror, etc.
-  - **Rating Mínimo**: Deslizador desde 5.0 hasta 9.0 (por default 7.0).
-  - **Votos Mínimos**: Por default 500 votos.
-  - **Modo Rotten Tomatoes**:
-    - *Híbrido (Recomendado)*: Exige +60% en tomatómetro y popcornómetro si la película ya tiene ficha en RT; si es un estreno 2026 tan reciente que aún no está en RT, pasa el filtro si cumple con IMDb.
-    - *Estricto*: Exige obligatoriamente tener ficha RT con +60% en ambos.
-    - *Desactivado*: Muestra las notas de RT de forma informativa.
-  - **Páginas a Escanear**: De 1 a 8 páginas de YTS (~20 a 160 películas).
-- **Escaneo en Tiempo Real (Server-Sent Events)**:
-  - Mira en vivo cómo cada película es consultada en IMDb y evaluada.
-  - Barra de progreso interactiva con contadores en directo.
-  - Botón de parada de emergencia.
-- **Doble Panel de Resultados**:
-  - **Aprobadas**: Fichas completas con póster HD, badges de notas ⭐ IMDb (con conteo exacto de votos), 🍅 Tomatómetro, 🍿 Popcornómetro, sinopsis y botones magnet (720p, 1080p, 4K).
-  - **Descartadas (Transparencia)**: Tabla detallada con el motivo exacto por el que cada película no superó el filtro (ej. *"Votos en IMDb insuficientes: 19 votos (se requiere >500)"*).
-- **Exportación**:
-  - Descarga a archivo CSV con títulos, notas, votos, enlaces de IMDb y enlaces magnet principales.
-  - Copiado masivo de todos los enlaces magnet al portapapeles.
+> [!NOTE]
+> **¿Por qué Render en lugar de Netlify o Vercel?**
+> Netlify y Vercel son plataformas serverless con un tiempo límite de ejecución de 10 a 15 segundos por petición, lo cual corta las conexiones continuas de Server-Sent Events (SSE) del escáner en tiempo real. **Render.com** (o **Railway.app**) corre servidores Flask completos sin interrupción y ofrece certificado **HTTPS** gratuito, ideal para transmitir desde el móvil.
+
+1. Ingresa a **[dashboard.render.com](https://dashboard.render.com/)** (inicia sesión con GitHub).
+2. Haz clic en **New +** $\rightarrow$ **Web Service**.
+3. Selecciona tu repositorio: `damimontefiori/CinemaFilter`.
+4. Completa:
+   - **Name**: `cinemafilter`
+   - **Runtime**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `python app.py`
+5. En **Environment Variables**, agrega:
+   - `APP_PASSWORDS` = `tus_claves_separadas_por_comas`
+   - `FLASK_SECRET_KEY` = `un_texto_secreto_largo`
+6. Haz clic en **Create Web Service**. ¡Listo! Tendrás tu URL HTTPS pública (ej. `https://cinemafilter.onrender.com`) accesible desde tu teléfono desde cualquier lugar.
