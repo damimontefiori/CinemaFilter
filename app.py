@@ -320,17 +320,35 @@ def download_subtitles_srt(imdb_id):
 
 @app.route('/api/latino/<imdb_id>')
 def get_latino_sources(imdb_id):
-    """Returns Latin Spanish stream link and DonTorrent downloads."""
+    """Returns DonTorrent releases with clean torrent downloads and magnets."""
     title = request.args.get('title', '')
     year = request.args.get('year', '')
-    stream_url = latino_sources.get_latino_stream_url(imdb_id)
     dontorrent_items = latino_sources.search_dontorrent(title, year)
     return jsonify({
         'imdb_id': imdb_id,
         'title': title,
-        'stream_url': stream_url,
+        'year': year,
         'dontorrent': dontorrent_items
     })
+
+
+@app.route('/api/latino/torrent_download')
+def download_latino_torrent():
+    """Proxies and serves clean .torrent file to avoid browser referrer / CORS blocks."""
+    torrent_url = request.args.get('url', '')
+    filename = request.args.get('filename', 'pelicula_espanol.torrent')
+    if not torrent_url:
+        return jsonify({'error': 'URL de torrent no proporcionada'}), 400
+    t_bytes = latino_sources.download_torrent_file(torrent_url)
+    if not t_bytes:
+        return jsonify({'error': 'No se pudo descargar el archivo torrent'}), 404
+    if not filename.endswith('.torrent'):
+        filename += '.torrent'
+    return Response(
+        t_bytes,
+        mimetype="application/x-bittorrent",
+        headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
+    )
 
 
 if __name__ == '__main__':

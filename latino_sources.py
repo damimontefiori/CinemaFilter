@@ -114,6 +114,13 @@ def search_dontorrent(title, year=None):
                             elif t_url.startswith('/'):
                                 t_url = f"{base}{t_url}"
                             item['torrent_url'] = t_url
+                            # Eagerly compute magnet link so it can be used with Stremio or WebTorrent
+                            t_bytes = download_torrent_file(t_url)
+                            if t_bytes:
+                                ih = extract_info_hash_from_torrent(t_bytes)
+                                if ih:
+                                    item['info_hash'] = ih
+                                    item['magnet'] = f"magnet:?xt=urn:btih:{ih}&dn={urllib.parse.quote(item['title'])}&tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce"
                 except Exception as e:
                     print(f"[latino_sources] Failed to extract torrent link for {item['detail_url']}: {e}")
 
@@ -124,11 +131,57 @@ def search_dontorrent(title, year=None):
     return results
 
 
-def get_latino_stream_url(imdb_id):
-    """
-    Returns the instant CDN streaming URL with Latin American Spanish audio option.
-    MultiEmbed includes [LAT] audio server natively.
-    """
-    if not imdb_id:
+import hashlib
+
+def extract_info_hash_from_torrent(b):
+    """Parses bencoded info dict from torrent bytes and returns hex SHA-1 info_hash."""
+    idx = b.find(b'4:info')
+    if idx == -1:
         return None
-    return f"https://multiembed.mov/?video_id={imdb_id}"
+    start = idx + 6
+    if b[start:start+1] != b'd':
+        return None
+    depth = 0
+    pos = start
+    while pos < len(b):
+        char = b[pos:pos+1]
+        if char == b'd' or char == b'l':
+            depth += 1
+            pos += 1
+        elif char == b'e':
+            depth -= 1
+            pos += 1
+            if depth == 0:
+                info_bytes = b[start:pos]
+                return hashlib.sha1(info_bytes).hexdigest()
+        elif char == b'i':
+            e_idx = b.find(b'e', pos)
+            if e_idx == -1:
+                break
+            pos = e_idx + 1
+        elif char.isdigit():
+            colon_idx = b.find(b':', pos)
+            if colon_idx == -1:
+                break
+            str_len = int(b[pos:colon_idx])
+            pos = colon_idx + 1 + str_len
+        else:
+            pos += 1
+    return None
+
+
+def download_torrent_file(torrent_url):
+    """
+    Downloads raw .torrent bytes with proper headers and SSL context.
+    Returns bytes or None.
+    """
+    if not torrent_url:
+        return None
+    try:
+        req = urllib.request.Request(torrent_url, headers=HEADERS)
+        with urllib.request.urlopen(req, context=_SSL_CTX, timeout=8) as resp:
+            return resp.read()
+    except Exception as e:
+        print(f"[latino_sources] Failed to download torrent file from {torrent_url}: {e}")
+        return None
+
