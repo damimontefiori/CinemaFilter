@@ -97,29 +97,43 @@ Aprovecha el **IMDb ID** (`tt...`) extraído de cada película aprobada para con
 
 ---
 
-## 5. Módulo de Subtítulos y Audio Latino (Implementado)
+## 5. Módulo de Subtítulos y Audio en Español (Multi-Fuente)
 
 ### 5.1 Subtítulos en Español Sincronizados (`subtitles.py`)
-- **Scraper de YIFY Subtitles**: Scrapea `https://yifysubtitles.ch/movie-imdb/{imdb_id}` para obtener subtítulos en español específicamente sincronizados con los releases de YTS.
-- **Conversor SRT a WebVTT**: Convierte en memoria los subtítulos `.srt` extraídos a formato WebVTT estándar (`WEBVTT` + timestamps `00:00:00.000 --> 00:00:00.000`).
+- **Proveedor Principal (OpenSubtitles v3 - CDN oficial de Stremio)**:
+  - Consulta `https://opensubtitles-v3.strem.io/subtitles/movie/{imdb_id}.json`.
+  - Cobertura masiva de películas y estrenos sin requerir API key ni registrar cuentas.
+  - Filtro por dialectos hispanos: `spa`, `es`, `es-mx`, `es-es`, `spa-es`, `spa-mx`.
+  - Descarga directa en UTF-8 con detección automática de codificaciones (`utf-8`, `cp1252`, `latin-1`, `iso-8859-1`).
+- **Proveedor Secundario (YIFY Subtitles)**:
+  - Scrapea `https://yifysubtitles.ch/movie-imdb/{imdb_id}` para obtener subtítulos específicamente sincronizados con los releases de YTS.
+- **Conversor SRT a WebVTT**:
+  - Convierte en memoria los subtítulos `.srt` a formato WebVTT estándar (`WEBVTT` + timestamps `00:00:00.000 --> 00:00:00.000`) para etiquetas `<track>` de video HTML5.
 - **Endpoints de Subtítulos**:
   - `GET /api/subtitles/<imdb_id>`: Metadatos de subtítulos disponibles en español.
-  - `GET /api/subtitles/vtt/<imdb_id>`: Sirve la pista WebVTT directamente con cabecera `Content-Type: text/vtt; charset=utf-8` para la etiqueta `<track>` del reproductor HTML5.
-  - `GET /api/subtitles/download/<imdb_id>`: Descarga directa del archivo `.srt` con cabecera `Content-Disposition: attachment`.
-- **Integración UI**:
-  - Botón **`[Subtítulos ES]`** en cada tarjeta de película aprobada para descargar el `.srt` en 1 clic.
-  - Botón **`[Subtítulo .SRT]`** en la barra de herramientas del reproductor modal.
-  - Pista `<track id="player-sub-track">` cargada automáticamente en el reproductor de video.
+  - `GET /api/subtitles/vtt/<imdb_id>`: Sirve la pista WebVTT directamente con cabeceras CORS y `Content-Type: text/vtt; charset=utf-8`.
+  - `GET /api/subtitles/download/<imdb_id>`: Descarga del archivo `.srt` con cabeceras `Content-Disposition: attachment; filename="..."` y CORS.
+- **Integración UI Asíncrona (`downloadSubtitle`)**:
+  - Botón **`[Subtítulos ES]`** en cada tarjeta de película y **`[Subtítulo .SRT]`** en la barra del reproductor.
+  - Descarga asíncrona mediante `fetch` y Blob: **nunca abre pestañas en blanco ni muestra JSON crudo al usuario**.
+  - Si un subtítulo no estuviera disponible, muestra una notificación emergente (Toast) explicativa en la propia interfaz.
 
-### 5.2 Streaming y Torrents con Audio Latino (`latino_sources.py`)
-- **Streaming MultiEmbed con Opción de Audio Latino**:
-  - Pestaña **`[🇲🇽 Audio Latino]`** en el reproductor modal (`https://multiembed.mov/?video_id={imdb_id}`).
-  - Botón de acceso directo **`[Audio Latino]`** en cada tarjeta aprobada.
-  - Incluye servidor nativo con pistas dobladas al español latino para estrenos internacionales.
-- **Scraper DonTorrent**:
-  - Búsqueda mediante POST a `https://www21.dontorrent.link/peliculas/buscar` con detección dinámica de espejos y resolución de redirecciones.
-  - Extracción de enlaces `.torrent` limpios en calidades 4K, 1080p y 720p.
-  - Endpoint `GET /api/latino/<imdb_id>?title={title}&year={year}`.
+### 5.2 Catálogo P2P en Audio Latino y Castellano (`latino_sources.py`)
+- **Indexador P2P Torrentio (Cinecalidad, TorrentGalaxy, DonTorrent, etc.)**:
+  - Búsqueda P2P por `imdb_id` en el catálogo en español y audio latino.
+  - Clasificación automática con badges (`[🇲🇽 Audio Latino]` / `[🇪🇸 Castellano]`), conteo de seeders, peso en GB y calidad.
+- **Lanzador Seguro de Protocolos (`launchStremio` y `launchMagnet`)**:
+  - Invocación de protocolos externos (`stremio://` y `magnet:`) a través de un iframe invisible en segundo plano.
+  - **Previene al 100% el error `about:blank#blocked` de Google Chrome**.
+  - Copia automática instantánea del enlace magnet al portapapeles como respaldo garantizado.
+  - Botones dedicados en el modal de Fuentes en Español:
+    - `[▶ Abrir en Stremio]`: Lanza Stremio Desktop con el stream listo para reproducir.
+    - `[🧲 Abrir Torrent]`: Lanza el cliente torrent predeterminado del sistema (qBittorrent, etc.).
+    - `[📋 Copiar Magnet]`: Copia el enlace magnet con confirmación visual.
+    - `[💾 Descargar .torrent]`: Descarga directa del archivo torrent limpio.
+- **Endpoint Backend**:
+  - `GET /api/latino/<imdb_id>?title={title}&year={year}`.
+  - `GET /api/latino/torrent_download?url={url}&filename={filename}`: Proxy para descargar archivos `.torrent` evitando bloqueos de CORS y hotlink.
 
 ---
 

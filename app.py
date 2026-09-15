@@ -5,6 +5,7 @@ Protected by Multi-Key Access Authentication (APP_PASSWORDS).
 
 import os
 import io
+import re
 import csv
 import json
 from datetime import timedelta
@@ -311,10 +312,16 @@ def download_subtitles_srt(imdb_id):
     if not srt_content:
         return jsonify({'error': 'No se encontraron subtítulos en español para esta película'}), 404
     download_name = fname or f"{imdb_id}_es.srt"
+    # Ensure safe ascii filename for Content-Disposition header
+    safe_filename = re.sub(r'[^\w\.\- ]', '_', download_name)
     return Response(
         srt_content.encode('utf-8'),
-        mimetype="text/plain; charset=utf-8",
-        headers={"Content-Disposition": f"attachment; filename=\"{download_name}\""}
+        mimetype="application/x-subrip; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=\"{safe_filename}\"",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "Content-Disposition"
+        }
     )
 
 

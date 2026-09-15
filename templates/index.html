@@ -525,10 +525,11 @@
       <div id="player-instant-infobar" class="bg-gray-950/80 border-t border-gray-800 px-4 py-2 text-xs text-gray-400 flex flex-wrap items-center justify-between gap-2">
         <div class="flex items-center gap-2 text-emerald-300 font-medium">
           <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
-          <span>Streaming CDN de alta velocidad: inicia en 1-2 segundos sin depender de sembradores torrent.</span>
+          <span>Streaming CDN HD: inicia en 1-2 segundos.</span>
         </div>
-        <div class="text-[11px] text-gray-400">
-          Usa los controles del reproductor para cambiar audio, subtítulos o poner pantalla completa.
+        <div class="text-[11px] text-gray-300 flex items-center gap-1.5">
+          <i data-lucide="info" class="w-3.5 h-3.5 text-teal-400"></i>
+          <span>¿El reproductor no muestra subtítulos en español en su menú CC? Pulsa <strong>Subtítulo .SRT</strong> para descargarlo o <strong>Abrir en Stremio</strong>.</span>
         </div>
       </div>
 
@@ -546,15 +547,15 @@
 
         <!-- Right: Stremio, Subtitles, Download to disk, Magnet -->
         <div class="flex flex-wrap items-center gap-2">
-          <a id="btn-download-subtitles" href="#" target="_blank" class="bg-gray-800 hover:bg-gray-700 text-teal-300 hover:text-white border border-gray-700 font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm" title="Descargar subtítulo en español (.srt) sincronizado">
+          <button id="btn-download-subtitles" onclick="downloadSubtitle(currentImdbId, currentTitle)" class="bg-gray-800 hover:bg-gray-700 text-teal-300 hover:text-white border border-gray-700 font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Descargar subtítulo en español (.srt) sincronizado">
             <i data-lucide="message-square" class="w-3.5 h-3.5 text-teal-400"></i>
             <span>Subtítulo .SRT</span>
-          </a>
+          </button>
 
-          <a id="btn-open-stremio" href="#" class="bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-gray-950 border border-amber-500/30 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm" title="Abrir en reproductor Stremio a máxima velocidad P2P (TCP/UDP)">
+          <button id="btn-open-stremio" onclick="launchStremio(encodeURIComponent(currentMagnet))" class="bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-gray-950 border border-amber-500/30 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Abrir en reproductor Stremio a máxima velocidad P2P (TCP/UDP)">
             <i data-lucide="play-circle" class="w-3.5 h-3.5 fill-current"></i>
             <span>Abrir en Stremio</span>
-          </a>
+          </button>
 
           <button id="btn-download-file" class="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition active:scale-95" title="Guardar archivo MP4 en la carpeta Descargas del navegador">
             <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-400"></i>
@@ -1034,10 +1035,10 @@
               <span>Ver Película (Streaming Inmediato)</span>
             </button>
             <div class="grid grid-cols-2 gap-2 mt-2">
-              <a href="/api/subtitles/download/${m.imdb_id}" target="_blank" class="bg-gray-800 hover:bg-gray-700 text-teal-300 hover:text-white border border-gray-700 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold transition" title="Descargar subtítulo en español (.srt) sincronizado">
+              <button onclick="downloadSubtitle('${m.imdb_id}', '${encodeURIComponent(m.title)}')" class="bg-gray-800 hover:bg-gray-700 text-teal-300 hover:text-white border border-gray-700 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold transition cursor-pointer" title="Descargar subtítulo en español (.srt) sincronizado">
                 <i data-lucide="message-square" class="w-3.5 h-3.5 text-teal-400"></i>
                 <span>Subtítulos ES</span>
-              </a>
+              </button>
               <button onclick="openLatinoModal('${encodeURIComponent(m.title)}', '${m.year}', '${m.imdb_id || ''}', '${encodeURIComponent(m.img || '')}')" class="bg-gray-800 hover:bg-gray-700 text-amber-300 hover:text-white border border-gray-700 py-1.5 px-2 rounded-xl flex items-center justify-center gap-1.5 text-[11px] font-semibold transition" title="Buscar versiones y torrents con audio en español">
                 <i data-lucide="volume-2" class="w-3.5 h-3.5 text-amber-400"></i>
                 <span>Audio en Español</span>
@@ -1113,14 +1114,120 @@
       tbodyDiscarded.appendChild(tr);
     }
 
+    // Helper: Copy arbitrary text to clipboard with fallback
+    window.copyToClipboard = function(text, successMsg) {
+      if (!text) return;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(successMsg || "Copiado al portapapeles");
+        }).catch(() => {
+          fallbackCopyText(text, successMsg);
+        });
+      } else {
+        fallbackCopyText(text, successMsg);
+      }
+    };
+
+    function fallbackCopyText(text, successMsg) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg || "Copiado al portapapeles");
+      } catch (err) {
+        console.error('Fallback copy failed', err);
+      }
+      document.body.removeChild(textArea);
+    }
+
     // Helper: Copy magnet URI to clipboard
     window.copyMagnet = function(encodedMag) {
-      const mag = decodeURIComponent(encodedMag);
-      navigator.clipboard.writeText(mag).then(() => {
-        showToast("Enlace magnet copiado al portapapeles");
-      }).catch(err => {
-        console.error("Error al copiar magnet:", err);
-      });
+      const mag = decodeURIComponent(encodedMag || '');
+      if (!mag) return;
+      window.copyToClipboard(mag, "Enlace magnet copiado al portapapeles");
+    };
+
+    // Helper: Safe launch of external desktop protocol without triggering about:blank#blocked in Chrome
+    function launchProtocolSafely(uri) {
+      let iframe = document.getElementById('protocol-launcher-iframe');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'protocol-launcher-iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+      iframe.src = uri;
+    }
+
+    // Helper: Launch Stremio safely via iframe + auto-copy magnet
+    window.launchStremio = function(encodedMag) {
+      const mag = decodeURIComponent(encodedMag || '');
+      if (!mag) {
+        showToast("No hay enlace magnet disponible para abrir en Stremio", "warning");
+        return;
+      }
+      // 1. Copy magnet to clipboard as immediate guarantee
+      window.copyToClipboard(mag, "Abriendo Stremio... (Enlace magnet también copiado)");
+
+      // 2. Safe protocol trigger via hidden iframe (prevents about:blank#blocked)
+      const stremioUri = mag.replace(/^magnet:\?/, 'stremio://');
+      launchProtocolSafely(stremioUri);
+    };
+
+    // Helper: Launch standard Torrent client (qBittorrent / uTorrent) safely + auto-copy magnet
+    window.launchMagnet = function(encodedMag) {
+      const mag = decodeURIComponent(encodedMag || '');
+      if (!mag) {
+        showToast("No hay enlace magnet disponible", "warning");
+        return;
+      }
+      window.copyToClipboard(mag, "Abriendo Torrent... (Enlace copiado al portapapeles)");
+      launchProtocolSafely(mag);
+    };
+
+    // Helper: Download Spanish Subtitles via AJAX and blob (prevents blank tab with raw JSON)
+    window.downloadSubtitle = async function(imdbId, movieTitle) {
+      if (!imdbId) {
+        showToast("IMDb ID no disponible para buscar subtítulos", "warning");
+        return;
+      }
+      const title = decodeURIComponent(movieTitle || 'pelicula');
+      showToast(`Buscando subtítulo en español para "${title}"...`);
+      try {
+        const resp = await fetch(`/api/subtitles/download/${imdbId}`);
+        if (!resp.ok) {
+          const errData = await resp.json().catch(() => ({}));
+          showToast(errData.error || "No se encontraron subtítulos en español disponibles aún.", "warning");
+          return;
+        }
+
+        const blob = await resp.blob();
+        let filename = `${title.replace(/[^a-zA-Z0-9_\-\. ]/g, '')}_Español.srt`;
+        const disposition = resp.headers.get('Content-Disposition');
+        if (disposition && disposition.includes('filename=')) {
+          const match = disposition.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) filename = match[1];
+        }
+
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+
+        showToast(`Subtítulo descargado: ${filename}`);
+      } catch (err) {
+        console.error("Error al descargar subtítulo:", err);
+        showToast("Error de conexión al buscar subtítulos", "error");
+      }
     };
 
     // Helper: Copy all magnets
@@ -1232,7 +1339,6 @@
       const subDlBtn = document.getElementById('btn-download-subtitles');
       if (subDlBtn) {
         if (currentImdbId) {
-          subDlBtn.href = `/api/subtitles/download/${currentImdbId}`;
           subDlBtn.classList.remove('hidden');
         } else {
           subDlBtn.classList.add('hidden');
@@ -1249,15 +1355,12 @@
       const stremioBtn = document.getElementById('btn-open-stremio');
       const copyMagBtn = document.getElementById('btn-copy-player-magnet');
       if (currentMagnet && currentMagnet.startsWith('magnet:?')) {
-        const stremioUri = currentMagnet.replace(/^magnet:\?/, 'stremio://');
-        stremioBtn.href = stremioUri;
         stremioBtn.classList.remove('opacity-40', 'pointer-events-none');
         copyMagBtn.classList.remove('hidden');
         copyMagBtn.onclick = function() {
           copyMagnet(encodeURIComponent(currentMagnet));
         };
       } else {
-        stremioBtn.href = '#';
         stremioBtn.classList.add('opacity-40', 'pointer-events-none');
         copyMagBtn.classList.add('hidden');
       }
@@ -1581,7 +1684,6 @@
               const sizeInfo = it.size ? `<span class="text-[11px] text-gray-400 font-mono">${it.size}</span>` : '';
 
               const dlTorrentUrl = it.torrent_url ? `/api/latino/torrent_download?url=${encodeURIComponent(it.torrent_url)}&filename=${encodeURIComponent(it.title + '.torrent')}` : '#';
-              const stremioUrl = it.magnet ? it.magnet.replace(/^magnet:\?/, 'stremio://') : '#';
 
               html += `
                 <div class="bg-gray-950 p-3 rounded-xl border border-gray-800 space-y-2 hover:border-gray-700 transition">
@@ -1601,11 +1703,15 @@
                   </div>
                   <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-800/60">
                     ${it.magnet ? `
-                      <a href="${stremioUrl}" class="bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-gray-950 border border-amber-500/30 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition shadow-sm">
+                      <button onclick="launchStremio('${encodeURIComponent(it.magnet)}')" class="bg-amber-500/10 hover:bg-amber-500 text-amber-300 hover:text-gray-950 border border-amber-500/30 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Abrir directamente en reproductor Stremio">
                         <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
                         <span>Abrir en Stremio</span>
-                      </a>
-                      <button onclick="copyToClipboard('${it.magnet}', 'Enlace magnet en español copiado')" class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition" title="Copiar Magnet">
+                      </button>
+                      <button onclick="launchMagnet('${encodeURIComponent(it.magnet)}')" class="bg-blue-500/10 hover:bg-blue-500 text-blue-300 hover:text-gray-950 border border-blue-500/30 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Abrir en cliente Torrent por defecto (qBittorrent / uTorrent)">
+                        <i data-lucide="magnet" class="w-3.5 h-3.5"></i>
+                        <span>Abrir Torrent</span>
+                      </button>
+                      <button onclick="copyMagnet('${encodeURIComponent(it.magnet)}')" class="bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white border border-gray-700 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer" title="Copiar enlace magnet al portapapeles">
                         <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                         <span>Copiar Magnet</span>
                       </button>
