@@ -320,15 +320,16 @@ def download_subtitles_srt(imdb_id):
 
 @app.route('/api/latino/<imdb_id>')
 def get_latino_sources(imdb_id):
-    """Returns DonTorrent releases with clean torrent downloads and magnets."""
+    """Returns Spanish & Latino releases (Torrentio/Cinecalidad and DonTorrent) with clean torrent downloads and magnets."""
     title = request.args.get('title', '')
     year = request.args.get('year', '')
-    dontorrent_items = latino_sources.search_dontorrent(title, year)
+    items = latino_sources.search_all_spanish_sources(imdb_id, title, year)
     return jsonify({
         'imdb_id': imdb_id,
         'title': title,
         'year': year,
-        'dontorrent': dontorrent_items
+        'results': items,
+        'dontorrent': items
     })
 
 
