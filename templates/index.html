@@ -1296,10 +1296,11 @@
     let wtClient = null;
     let currentTorrent = null;
     let currentFile = null;
-    let currentImdbId = '';
     let currentTitle = '';
     let currentYear = '';
     let currentMagnet = '';
+    let currentImdbId = '';
+    let currentSubUrl = '';
     let currentActiveSource = 'vidlink';
 
     const WEBRTC_TRACKERS = [
@@ -1329,6 +1330,7 @@
       currentYear = year || '';
       currentMagnet = decodeURIComponent(encodedMagnet || '');
       currentImdbId = imdbId || '';
+      currentSubUrl = '';
       const qualityText = quality || 'HD';
 
       // Set header info
@@ -1363,6 +1365,28 @@
       } else {
         stremioBtn.classList.add('opacity-40', 'pointer-events-none');
         copyMagBtn.classList.add('hidden');
+      }
+
+      // Fetch available Spanish subtitle to inject into VidLink player
+      if (currentImdbId) {
+        fetch(`/api/subtitles/${currentImdbId}`)
+          .then(res => res.json())
+          .then(data => {
+            const subs = data.subtitles || [];
+            const directSub = subs.find(s => s.download_url);
+            if (directSub) {
+              currentSubUrl = directSub.download_url;
+              if (currentActiveSource === 'vidlink') {
+                const playerIframe = document.getElementById('player-iframe');
+                const vidlinkBase = `https://vidlink.pro/movie/${currentImdbId}`;
+                const subParam = `?sub_file=${encodeURIComponent(currentSubUrl)}&sub_label=Espa%C3%B1ol`;
+                if (playerIframe.src.startsWith(vidlinkBase) && !playerIframe.src.includes('sub_file=')) {
+                  playerIframe.src = vidlinkBase + subParam;
+                }
+              }
+            }
+          })
+          .catch(() => {});
       }
 
       // Show modal
@@ -1411,7 +1435,8 @@
 
         statusText.textContent = 'Conectado a Servidor 1 (VidLink CDN HD - Ultra Rápido)';
         if (currentImdbId) {
-          playerIframe.src = `https://vidlink.pro/movie/${currentImdbId}`;
+          const subParam = currentSubUrl ? `?sub_file=${encodeURIComponent(currentSubUrl)}&sub_label=Espa%C3%B1ol` : '';
+          playerIframe.src = `https://vidlink.pro/movie/${currentImdbId}${subParam}`;
         } else {
           statusText.textContent = 'Sin IMDb ID. Cambia a la pestaña P2P Torrent.';
         }
