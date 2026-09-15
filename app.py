@@ -8,6 +8,7 @@ import io
 import re
 import csv
 import json
+import subprocess
 from datetime import timedelta
 from flask import Flask, render_template, request, Response, jsonify, session, redirect, url_for
 import scraper
@@ -357,6 +358,30 @@ def download_latino_torrent():
         mimetype="application/x-bittorrent",
         headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
     )
+
+
+@app.route('/api/stremio/launch', methods=['GET', 'POST'])
+def launch_stremio():
+    """Directly launches local Stremio app with the provided magnet or torrent URI on the host machine."""
+    magnet = request.args.get('magnet') or request.form.get('magnet', '')
+    if not magnet:
+        return jsonify({'success': False, 'error': 'No magnet provided'}), 400
+
+    candidates = [
+        os.path.expandvars(r'%LOCALAPPDATA%\Programs\LNV\Stremio-4\stremio.exe'),
+        os.path.expandvars(r'%LOCALAPPDATA%\Smart Code OOD\Stremio\stremio.exe'),
+        r'C:\Program Files\Stremio\stremio.exe',
+        r'C:\Program Files (x86)\Stremio\stremio.exe'
+    ]
+    stremio_exe = next((c for c in candidates if os.path.exists(c)), None)
+    if not stremio_exe:
+        return jsonify({'success': False, 'error': 'Stremio not installed on host'}), 404
+
+    try:
+        subprocess.Popen([stremio_exe, magnet], shell=False)
+        return jsonify({'success': True, 'launched': True, 'exe': stremio_exe})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 if __name__ == '__main__':

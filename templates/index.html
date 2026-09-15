@@ -1164,7 +1164,7 @@
       iframe.src = uri;
     }
 
-    // Helper: Launch Stremio safely via iframe + auto-copy magnet
+    // Helper: Launch Stremio safely via host backend + iframe + auto-copy magnet
     window.launchStremio = function(encodedMag) {
       const mag = decodeURIComponent(encodedMag || '');
       if (!mag) {
@@ -1174,9 +1174,19 @@
       // 1. Copy magnet to clipboard as immediate guarantee
       window.copyToClipboard(mag, "Abriendo Stremio... (Enlace magnet también copiado)");
 
-      // 2. Safe protocol trigger via hidden iframe (prevents about:blank#blocked)
+      // 2. Safe protocol trigger via hidden iframe (for mobile or external browsers)
       const stremioUri = mag.replace(/^magnet:\?/, 'stremio://');
       launchProtocolSafely(stremioUri);
+
+      // 3. Direct launch on host PC (guarantees immediate desktop execution)
+      fetch(`/api/stremio/launch?magnet=${encodeURIComponent(mag)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            showToast("¡Stremio iniciado en el equipo!", "success");
+          }
+        })
+        .catch(() => {});
     };
 
     // Helper: Launch standard Torrent client (qBittorrent / uTorrent) safely + auto-copy magnet
