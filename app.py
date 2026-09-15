@@ -378,10 +378,60 @@ def launch_stremio():
         return jsonify({'success': False, 'error': 'Stremio not installed on host'}), 404
 
     try:
-        subprocess.Popen([stremio_exe, magnet], shell=False)
+        cwd = os.path.dirname(stremio_exe)
+        subprocess.Popen(['cmd.exe', '/c', 'start', '', stremio_exe, magnet], cwd=cwd)
         return jsonify({'success': True, 'launched': True, 'exe': stremio_exe})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/torrent/launch', methods=['GET', 'POST'])
+def launch_torrent():
+    """Directly launches local torrent client (e.g. qBittorrent) with the magnet link on the host machine."""
+    magnet = request.args.get('magnet') or request.form.get('magnet', '')
+    if not magnet:
+        return jsonify({'success': False, 'error': 'No magnet provided'}), 400
+
+    candidates = [
+        r'C:\Program Files\qBittorrent\qbittorrent.exe',
+        r'C:\Program Files (x86)\qBittorrent\qbittorrent.exe',
+        os.path.expandvars(r'%LOCALAPPDATA%\Programs\qBittorrent\qbittorrent.exe')
+    ]
+    qb_exe = next((c for c in candidates if os.path.exists(c)), None)
+
+    try:
+        if qb_exe:
+            subprocess.Popen([qb_exe, magnet])
+            return jsonify({'success': True, 'client': 'qBittorrent', 'exe': qb_exe})
+        else:
+            # Fallback to system default torrent protocol handler
+            os.startfile(magnet)
+            return jsonify({'success': True, 'client': 'default'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/vlc/launch', methods=['GET', 'POST'])
+def launch_vlc():
+    """Directly launches local VLC player on the host machine."""
+    target = request.args.get('target') or request.form.get('target', '')
+    candidates = [
+        r'C:\Program Files\VideoLAN\VLC\vlc.exe',
+        r'C:\Program Files (x86)\VideoLAN\VLC\vlc.exe'
+    ]
+    vlc_exe = next((c for c in candidates if os.path.exists(c)), None)
+    if not vlc_exe:
+        return jsonify({'success': False, 'error': 'VLC no está instalado en este equipo'}), 404
+
+    try:
+        args = [vlc_exe]
+        if target:
+            args.append(target)
+        subprocess.Popen(args)
+        return jsonify({'success': True, 'client': 'VLC', 'exe': vlc_exe})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 
 if __name__ == '__main__':
