@@ -1303,12 +1303,44 @@
     };
 
     // Helper: Play directly in browser from the Latino modal
-    window.playInBrowserFromLatino = function(encodedTitle, year, quality, encodedMagnet, encodedImg, imdbId) {
+    window.playInBrowserFromLatino = async function(encodedTitle, year, quality, encodedMagnet, encodedImg, imdbId, encodedTorrentUrl, encodedDetailUrl) {
       const modal = document.getElementById('latino-sources-modal');
       if (modal) modal.classList.add('hidden');
 
-      window.openPlayer(encodedTitle, year, quality, encodedMagnet, encodedImg, imdbId, 'vidlink');
-      showToast("Iniciando reproductor web en HD...", "info");
+      let magnet = decodeURIComponent(encodedMagnet || '');
+      const torrentUrl = decodeURIComponent(encodedTorrentUrl || '');
+      const detailUrl = decodeURIComponent(encodedDetailUrl || '');
+      let title = decodeURIComponent(encodedTitle || '');
+      title = title.replace(/\s*\(Audio en Español\)/i, '').trim();
+
+      // If magnet is missing or not a valid URI, resolve it from the backend
+      if (!magnet || !magnet.startsWith('magnet:?')) {
+        showToast("Extrayendo enlace de transmisión en español...", "info");
+        try {
+          const resolveParams = new URLSearchParams({
+            title: title,
+            torrent_url: torrentUrl,
+            detail_url: detailUrl
+          });
+          const res = await fetch(`/api/latino/resolve_magnet?${resolveParams.toString()}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.magnet) {
+              magnet = data.magnet;
+            }
+          }
+        } catch (e) {
+          console.error("Error resolviendo magnet:", e);
+        }
+      }
+
+      if (!magnet || !magnet.startsWith('magnet:?')) {
+        showToast("No se pudo obtener el enlace P2P para esta fuente en español.", "warning");
+        return;
+      }
+
+      showToast("Cargando fuente en español en el reproductor web...", "info");
+      window.openPlayer(encodeURIComponent(`${title} (Audio en Español)`), year, quality, encodeURIComponent(magnet), encodedImg, imdbId, 'webtorrent');
     };
 
 
@@ -2068,7 +2100,8 @@
 
     // Latino Sources Modal logic
     window.openLatinoModal = function(encodedTitle, year, imdbId, encodedImg) {
-      const title = decodeURIComponent(encodedTitle || '');
+      let title = decodeURIComponent(encodedTitle || '');
+      title = title.replace(/\s*\(Audio en Español\)/i, '').trim();
       const img = decodeURIComponent(encodedImg || '');
       const modal = document.getElementById('latino-sources-modal');
       const titleEl = document.getElementById('latino-modal-movie-title');
@@ -2097,7 +2130,7 @@
                 <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5"></i>
                 <div>
                   <p class="font-bold">¡Fuentes con Audio en Español encontradas!</p>
-                  <p class="text-[11px] text-emerald-200/80">Puedes pulsar <strong>"Ver en Navegador"</strong> para reproducción instantánea con subtítulos, o <strong>"Abrir en qBittorrent / Stremio"</strong> para el audio doblado.</p>
+                  <p class="text-[11px] text-emerald-200/80">Puedes pulsar <strong>"Ver en Navegador"</strong> para reproducir esta fuente en español en el reproductor web, o usar los botones de <strong>qBittorrent / Stremio</strong>.</p>
                 </div>
               </div>
               <div class="space-y-2.5">
@@ -2132,7 +2165,7 @@
                     </div>
                   </div>
                   <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-800/60">
-                    <button onclick="playInBrowserFromLatino('${encodeURIComponent(title)}', '${year}', '${it.quality || 'HD'}', '${encodeURIComponent(it.magnet || '')}', '${encodeURIComponent(img)}', '${imdbId}')" class="bg-emerald-500 hover:bg-emerald-400 text-gray-950 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Ver directamente en el reproductor del navegador con subtítulos en español sincronizados">
+                    <button onclick="playInBrowserFromLatino('${encodeURIComponent(title)}', '${year}', '${it.quality || 'HD'}', '${encodeURIComponent(it.magnet || '')}', '${encodeURIComponent(img)}', '${imdbId}', '${encodeURIComponent(it.torrent_url || '')}', '${encodeURIComponent(it.detail_url || '')}')" class="bg-emerald-500 hover:bg-emerald-400 text-gray-950 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Ver directamente en el reproductor del navegador con audio en español">
                       <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
                       <span>Ver en Navegador</span>
                     </button>

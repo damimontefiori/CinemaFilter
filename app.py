@@ -365,6 +365,19 @@ def download_latino_torrent():
     )
 
 
+@app.route('/api/latino/resolve_magnet')
+def resolve_latino_magnet():
+    """Resolves a .torrent URL or detail URL into a full magnet link."""
+    torrent_url = request.args.get('torrent_url', '')
+    detail_url = request.args.get('detail_url', '')
+    title = request.args.get('title', 'Pelicula')
+    
+    magnet = latino_sources.resolve_magnet_from_source(torrent_url=torrent_url, detail_url=detail_url, title=title)
+    if magnet:
+        return jsonify({'success': True, 'magnet': magnet})
+    return jsonify({'success': False, 'error': 'No se pudo resolver el magnet del torrent'}), 404
+
+
 _PATCHED_CHUNK_1380_CACHE = None
 _PATCHED_PAGE_CHUNK_CACHE = None
 _FU_WASM_CACHE = None

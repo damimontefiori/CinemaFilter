@@ -181,6 +181,35 @@ def download_torrent_file(torrent_url):
         return None
 
 
+def resolve_magnet_from_source(torrent_url=None, detail_url=None, title='Pelicula'):
+    """Resolves magnet link from torrent_url or detail_url."""
+    if torrent_url:
+        t_bytes = download_torrent_file(torrent_url)
+        if t_bytes:
+            ih = extract_info_hash_from_torrent(t_bytes)
+            if ih:
+                clean_name = title or 'Pelicula'
+                trackers = "tr=udp%3A%2F%2Ftracker.opentrackr.org%3A1337%2Fannounce&tr=udp%3A%2F%2Fopen.demonii.com%3A1337%2Fannounce&tr=udp%3A%2F%2Ftracker.torrent.eu.org%3A451%2Fannounce"
+                return f"magnet:?xt=urn:btih:{ih}&dn={urllib.parse.quote(clean_name)}&{trackers}"
+    if detail_url:
+        try:
+            base = get_active_dontorrent_base()
+            d_req = urllib.request.Request(detail_url, headers=HEADERS)
+            with urllib.request.urlopen(d_req, context=_SSL_CTX, timeout=6) as d_resp:
+                soup = BeautifulSoup(d_resp.read().decode('utf-8', errors='ignore'), 'html.parser')
+                t_link = soup.find('a', href=re.compile(r'\.torrent$'))
+                if t_link and t_link.get('href'):
+                    t_url = t_link['href']
+                    if t_url.startswith('//'):
+                        t_url = f"https:{t_url}"
+                    elif t_url.startswith('/'):
+                        t_url = f"{base}{t_url}"
+                    return resolve_magnet_from_source(torrent_url=t_url, title=title)
+        except Exception as e:
+            print(f"[latino_sources] Error resolving detail url {detail_url}: {e}")
+    return None
+
+
 def search_torrentio_latino(imdb_id, title=""):
     """
     Queries Torrentio for real Spanish/Latino streams (including Cinecalidad, TorrentGalaxy, etc.)
