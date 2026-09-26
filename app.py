@@ -10,6 +10,7 @@ import csv
 import json
 import subprocess
 from datetime import timedelta
+import urllib.request
 from flask import Flask, render_template, request, Response, jsonify, session, redirect, url_for
 import scraper
 import subtitles
@@ -56,9 +57,13 @@ def require_authentication():
     """
     Guards all routes and APIs behind authentication.
     """
-    # Allow login, static files, and favicon
     allowed_endpoints = ['login', 'static']
-    if request.endpoint in allowed_endpoints or request.path.startswith('/static'):
+    if (request.endpoint in allowed_endpoints or 
+        request.path.startswith('/static') or 
+        request.path.startswith('/embed/') or
+        request.path.startswith('/_next/') or
+        request.path in ['/script.js', '/fu.wasm', '/api/venus', '/api/mercury', '/api/skip-events'] or
+        request.path.startswith('/api/b/')):
         return
 
     # Check session
@@ -358,6 +363,163 @@ def download_latino_torrent():
         mimetype="application/x-bittorrent",
         headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
     )
+
+
+_PATCHED_CHUNK_1380_CACHE = None
+_PATCHED_PAGE_CHUNK_CACHE = None
+_FU_WASM_CACHE = None
+_VIDLINK_ASSET_CACHE = {}
+
+
+@app.route('/embed/vidlink/chunk/1380.js')
+def vidlink_patched_chunk():
+    """Serves patched VidLink player chunk with popunder/window.open and invisible ad iframes completely removed."""
+    global _PATCHED_CHUNK_1380_CACHE
+    if _PATCHED_CHUNK_1380_CACHE is None:
+        url = 'https://vidlink.pro/_next/static/chunks/1380-c3a72f07e0aaddeb.js'
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            raw = urllib.request.urlopen(req, timeout=10).read().decode('utf-8')
+            # 1. Neutralize window.open
+            target = 'window.open(e,"_blank","noopener,noreferrer")'
+            patched = raw.replace(target, '(console.warn("[CinemaShield] Ad popup completely blocked!"),null)')
+            # 2. Neutralize invisible ad iframe creation
+            patched = patched.replace('this.createInvisibleTrigger(a)', 'void 0')
+            # 3. Force popunderMode to false
+            patched = patched.replace('popunderMode:!0', 'popunderMode:!1')
+            _PATCHED_CHUNK_1380_CACHE = patched.encode('utf-8')
+        except Exception:
+            return Response("", mimetype="application/javascript")
+    return Response(_PATCHED_CHUNK_1380_CACHE, mimetype="application/javascript", headers={
+        "Cache-Control": "public, max-age=86400",
+        "Access-Control-Allow-Origin": "*"
+    })
+
+
+def vidlink_patched_page_chunk():
+    """Serves patched VidLink movie page chunk with zone 9905914 ad injector and sandbox barrier removed."""
+    global _PATCHED_PAGE_CHUNK_CACHE
+    if _PATCHED_PAGE_CHUNK_CACHE is None:
+        url = 'https://vidlink.pro/_next/static/chunks/app/movie/%5Bid%5D/page-3041cae3d18df8ad.js'
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+            raw = urllib.request.urlopen(req, timeout=10).read().decode('utf-8')
+            # 1. Neutralize Shein/Brightadnetwork zone 9905914 ad injector
+            target_ad = '!a&&(0,n.jsxs)(n.Fragment,{children:[O&&(0,n.jsx)(h.Z,{zone:"9905914"}),O&&(0,n.jsx)(m.Z,{})]})'
+            patched = raw.replace(target_ad, '!1&&null')
+            # 2. Neutralize sandbox warning
+            patched = patched.replace('console.log("Sandboxed iframe detected")', 'console.log("[CinemaShield] Sandbox neutral")')
+            patched = patched.replace('<h1>Please Disable Sandbox</h1>', '')
+            _PATCHED_PAGE_CHUNK_CACHE = patched.encode('utf-8')
+        except Exception:
+            return Response("", mimetype="application/javascript")
+    return Response(_PATCHED_PAGE_CHUNK_CACHE, mimetype="application/javascript", headers={
+        "Cache-Control": "public, max-age=86400",
+        "Access-Control-Allow-Origin": "*"
+    })
+
+
+@app.route('/_next/<path:subpath>')
+def proxy_vidlink_next(subpath):
+    """Proxies and caches VidLink Next.js static assets with CORS headers, intercepting ad chunks."""
+    if '1380-c3a72f07e0aaddeb' in subpath:
+        return vidlink_patched_chunk()
+    if 'page-3041cae3d18df8ad' in subpath:
+        return vidlink_patched_page_chunk()
+
+    if subpath in _VIDLINK_ASSET_CACHE:
+        content, ctype = _VIDLINK_ASSET_CACHE[subpath]
+        return Response(content, mimetype=ctype, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=86400"})
+
+    try:
+        url = f"https://vidlink.pro/_next/{subpath}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        resp = urllib.request.urlopen(req, timeout=12)
+        content = resp.read()
+        ctype = resp.headers.get_content_type()
+        _VIDLINK_ASSET_CACHE[subpath] = (content, ctype)
+        return Response(content, mimetype=ctype, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "public, max-age=86400"})
+    except Exception:
+        return redirect(f"https://vidlink.pro/_next/{subpath}")
+
+
+@app.route('/script.js')
+def proxy_vidlink_script():
+    """Serves local VidLink root script.js needed for WASM/video decryption."""
+    js_path = os.path.join(os.path.dirname(__file__), 'vidlink_script.js')
+    if os.path.exists(js_path):
+        with open(js_path, 'rb') as f:
+            return Response(f.read(), mimetype="application/javascript", headers={"Access-Control-Allow-Origin": "*"})
+    return Response("", mimetype="application/javascript")
+
+
+@app.route('/fu.wasm')
+def proxy_vidlink_wasm():
+    """Serves local VidLink WebAssembly decryptor module instantly with 0 latency."""
+    wasm_path = os.path.join(os.path.dirname(__file__), 'fu.wasm')
+    if os.path.exists(wasm_path):
+        with open(wasm_path, 'rb') as f:
+            return Response(f.read(), mimetype="application/wasm", headers={"Access-Control-Allow-Origin": "*"})
+    return Response(b"", mimetype="application/wasm")
+
+
+@app.route('/api/b/<path:subpath>', methods=['GET', 'POST'])
+def proxy_vidlink_api(subpath):
+    """Proxies VidLink's internal backend movie streaming metadata API with uncompressed JSON."""
+    url = f"https://vidlink.pro/api/b/{subpath}"
+    if request.query_string:
+        url += '?' + request.query_string.decode('utf-8')
+    headers = {k: v for k, v in request.headers if k.lower() not in ['host', 'content-length', 'accept-encoding']}
+    headers['Host'] = 'vidlink.pro'
+    headers['Referer'] = 'https://vidlink.pro/'
+    headers['Origin'] = 'https://vidlink.pro'
+    headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+    headers['Accept-Encoding'] = 'identity'
+    
+    req = urllib.request.Request(url, data=request.get_data() if request.method == 'POST' else None, headers=headers, method=request.method)
+    try:
+        resp = urllib.request.urlopen(req, timeout=12)
+        return Response(resp.read(), status=resp.status, mimetype="application/json; charset=utf-8", headers={"Access-Control-Allow-Origin": "*"})
+    except urllib.error.HTTPError as e:
+        return Response(e.read(), status=e.code, mimetype="application/json", headers={"Access-Control-Allow-Origin": "*"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/venus')
+@app.route('/api/mercury')
+def proxy_vidlink_blocked_popads():
+    """Neutralizes third-party popads / redirect scripts."""
+    return jsonify({"blocked": True, "shield": "CinemaShield"})
+
+
+@app.route('/api/skip-events', methods=['GET', 'POST'])
+def proxy_vidlink_skip_events():
+    return jsonify({"status": "ok"})
+
+
+@app.route('/embed/player/<imdb_id>')
+def embed_player(imdb_id):
+    """
+    Proxies VidLink's embed with the patched ad-free chunks and server-side limitAds enabled.
+    Eliminates Shein / popunders completely with zero external redirects.
+    """
+    url = f"https://vidlink.pro/movie/{imdb_id}"
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        })
+        resp = urllib.request.urlopen(req, timeout=10)
+        html = resp.read().decode('utf-8', errors='ignore')
+        
+        # Enable limitAds: true server-side in the initial payload
+        html = html.replace(r'\"limitAds\":false', r'\"limitAds\":true')
+
+        return Response(html, mimetype="text/html")
+    except Exception as e:
+        return redirect(f"https://vidlink.pro/movie/{imdb_id}")
 
 
 @app.route('/api/stremio/launch', methods=['GET', 'POST'])

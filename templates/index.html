@@ -1838,7 +1838,7 @@
 
         statusText.textContent = 'Conectado a Servidor 1 (VidLink CDN HD - Ultra Rápido)';
         if (currentImdbId) {
-          playerIframe.src = `https://vidlink.pro/movie/${currentImdbId}`;
+          playerIframe.src = `/embed/player/${currentImdbId}`;
         } else {
           statusText.textContent = 'Sin IMDb ID. Cambia a la pestaña P2P Torrent.';
         }
