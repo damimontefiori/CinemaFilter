@@ -19,7 +19,10 @@ _SUBS_CACHE = {}
 # In-memory cache for downloaded VTT/SRT: cache_key -> (content_bytes, filename)
 _FILE_CACHE = {}
 
-SPANISH_LANG_CODES = {'spa', 'es', 'es-mx', 'es-es', 'spa-es', 'spa-mx', 'spanish', 'español'}
+SPANISH_LANG_CODES = {
+    'spa', 'es', 'es-mx', 'es-es', 'es-ar', 'es-la', 'es-419',
+    'spa-es', 'spa-mx', 'spanish', 'español', 'latino', 'castellano'
+}
 
 
 def get_spanish_subtitles(imdb_id):

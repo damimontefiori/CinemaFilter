@@ -435,7 +435,7 @@
       </div>
 
       <!-- Main Player Viewport Area -->
-      <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+      <div id="player-viewport-area" class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
         
         <!-- View 1: Instant Embed Iframe (Sandboxed to block popups, redirects and external tabs) -->
         <div id="player-instant-container" class="w-full h-full relative">
@@ -447,11 +447,18 @@
           </iframe>
         </div>
 
+        <!-- Universal CinemaFilter Subtitle Overlay -->
+        <div id="cinema-sub-overlay" class="pointer-events-none absolute bottom-10 sm:bottom-14 inset-x-4 flex justify-center text-center z-40 transition-opacity duration-150">
+          <span id="cinema-sub-text" class="hidden px-4 py-1.5 rounded-lg bg-black/85 text-yellow-300 font-bold text-sm sm:text-lg md:text-xl tracking-wide shadow-2xl backdrop-blur-sm border border-black/40 select-none">
+          </span>
+        </div>
+
         <!-- View 2: Native WebTorrent Video & Overlay -->
         <div id="player-webtorrent-container" class="hidden w-full h-full relative flex items-center justify-center bg-black">
           <video id="webtorrent-video" controls playsinline webkit-playsinline x-webkit-airplay="allow" class="w-full h-full object-contain">
             <track id="player-sub-track" label="Español" kind="subtitles" srclang="es" src="" default>
           </video>
+
 
           <!-- Loading Overlay for WebTorrent -->
           <div id="player-loading-overlay" class="absolute inset-0 bg-gray-950/90 flex flex-col items-center justify-center p-6 text-center space-y-4">
@@ -521,15 +528,41 @@
         </div>
       </div>
 
-      <!-- Instant Streaming Info Bar (Visible when Instant CDN mode is active) -->
-      <div id="player-instant-infobar" class="bg-gray-950/80 border-t border-gray-800 px-4 py-2 text-xs text-gray-400 flex flex-wrap items-center justify-between gap-2">
-        <div class="flex items-center gap-2 text-emerald-300 font-medium">
-          <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
-          <span>Streaming CDN HD: inicia en 1-2 segundos.</span>
+      <!-- Live Subtitle Sync & Control Bar -->
+      <div id="player-subtitles-bar" class="bg-gray-950/95 border-t border-gray-800 px-3 sm:px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <div id="sub-status-indicator" class="flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px] sm:text-xs">
+            <i data-lucide="subtitles" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+            <span id="sub-status-text">Cargando subtítulos en español...</span>
+          </div>
+          
+          <button id="btn-toggle-subtitles" onclick="toggleCinemaSubtitles()" class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-gray-950 px-2 py-0.5 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer">
+            <i data-lucide="check" class="w-3 h-3"></i>
+            <span id="btn-toggle-sub-text">Activados</span>
+          </button>
+
+          <!-- Upload custom SRT -->
+          <label class="bg-gray-800 hover:bg-gray-700 text-teal-300 border border-gray-700 px-2 py-0.5 rounded-md text-[11px] font-semibold transition flex items-center gap-1 cursor-pointer" title="Cargar archivo .SRT o .VTT desde tu PC">
+            <i data-lucide="upload" class="w-3 h-3"></i>
+            <span>Cargar .SRT</span>
+            <input type="file" id="input-custom-sub" accept=".srt,.vtt" class="hidden" onchange="handleCustomSubtitleUpload(event)">
+          </label>
         </div>
-        <div class="text-[11px] text-gray-300 flex items-center gap-1.5">
-          <i data-lucide="info" class="w-3.5 h-3.5 text-teal-400"></i>
-          <span>¿El reproductor no muestra subtítulos en español en su menú CC? Pulsa <strong>Subtítulo .SRT</strong> para descargarlo o <strong>Abrir en Stremio</strong>.</span>
+
+        <div id="sub-sync-controls" class="flex items-center gap-1.5 text-[11px] text-gray-300">
+          <span class="text-gray-400 font-mono text-[10px] hidden sm:inline">Sincronización:</span>
+          <button onclick="adjustSubSync(-0.5)" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-0.5 rounded border border-gray-700 font-mono transition text-[11px]" title="Adelantar subtítulos 0.5s">-0.5s</button>
+          <span id="sub-sync-offset-label" class="font-mono text-emerald-400 font-bold px-1 text-[11px]">0.0s</span>
+          <button onclick="adjustSubSync(0.5)" class="bg-gray-800 hover:bg-gray-700 text-gray-200 px-2 py-0.5 rounded border border-gray-700 font-mono transition text-[11px]" title="Retrasar subtítulos 0.5s">+0.5s</button>
+          <button onclick="resetSubSync()" class="bg-gray-800 hover:bg-gray-700 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700 text-[10px] transition" title="Restablecer a 0s">0s</button>
+
+          <span class="text-gray-600 px-1">|</span>
+
+          <!-- Fullscreen Button -->
+          <button onclick="toggleCinemaFullscreen()" class="bg-gray-800 hover:bg-gray-700 text-cyan-300 hover:text-white px-2 py-0.5 rounded border border-gray-700 text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer" title="Pantalla Completa con subtítulos integrados">
+            <i data-lucide="maximize" class="w-3 h-3"></i>
+            <span>Pantalla Completa</span>
+          </button>
         </div>
       </div>
 
@@ -1339,6 +1372,209 @@
     let currentSubUrl = '';
     let currentActiveSource = 'vidlink';
 
+    // Subtitle Overlay Engine (Syncs with VidLink postMessage timeupdate & WebTorrent video)
+    window.cinemaCues = [];
+    window.cinemaSubsEnabled = true;
+    window.cinemaSubOffset = 0; // seconds
+
+    function parseSubtitles(text) {
+      if (!text) return [];
+      const cues = [];
+      const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const blocks = normalized.split(/\n\s*\n/);
+      const timeRegex = /(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{3})/;
+
+      for (const block of blocks) {
+        const lines = block.trim().split('\n');
+        let timeLineIdx = -1;
+        let match = null;
+
+        for (let i = 0; i < lines.length; i++) {
+          match = lines[i].match(timeRegex);
+          if (match) {
+            timeLineIdx = i;
+            break;
+          }
+        }
+
+        if (timeLineIdx !== -1 && match) {
+          const parts = lines[timeLineIdx].split('-->');
+          const startParts = parts[0].trim();
+          const endParts = parts[1].trim();
+
+          const parseSecs = (str) => {
+            const m = str.match(/(?:(\d+):)?(\d{2}):(\d{2})[,.](\d{3})/);
+            if (!m) return 0;
+            const hours = m[1] ? parseInt(m[1], 10) : 0;
+            const mins = parseInt(m[2], 10);
+            const secs = parseInt(m[3], 10);
+            const ms = parseInt(m[4], 10);
+            return hours * 3600 + mins * 60 + secs + ms / 1000;
+          };
+
+          const start = parseSecs(startParts);
+          const end = parseSecs(endParts);
+          const textLines = lines.slice(timeLineIdx + 1).join('\n').trim();
+
+          if (textLines && end > start) {
+            cues.push({ start, end, text: textLines });
+          }
+        }
+      }
+      return cues;
+    }
+
+    async function loadCinemaSubtitles(imdbId) {
+      window.cinemaCues = [];
+      window.cinemaSubOffset = 0;
+      const statusText = document.getElementById('sub-status-text');
+      const offsetLabel = document.getElementById('sub-sync-offset-label');
+      if (offsetLabel) offsetLabel.textContent = '0.0s';
+      if (!statusText) return;
+
+      if (!imdbId) {
+        statusText.textContent = 'Sin IMDb ID para subtítulos';
+        return;
+      }
+
+      statusText.textContent = 'Buscando subtítulos en español sincronizados...';
+
+      try {
+        const res = await fetch(`/api/subtitles/download/${imdbId}`);
+        if (!res.ok) {
+          statusText.textContent = 'Sin subtítulos automáticos (Puedes usar "Cargar .SRT")';
+          const subIndicator = document.getElementById('sub-status-indicator');
+          if (subIndicator) subIndicator.className = 'flex items-center gap-1.5 text-gray-400 font-semibold text-[11px] sm:text-xs';
+          return;
+        }
+
+        const rawText = await res.text();
+        const parsed = parseSubtitles(rawText);
+        if (parsed.length > 0) {
+          window.cinemaCues = parsed;
+          window.cinemaSubsEnabled = true;
+          statusText.textContent = `✓ Subtítulos en español sincronizados (${parsed.length} líneas)`;
+          const subIndicator = document.getElementById('sub-status-indicator');
+          if (subIndicator) subIndicator.className = 'flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px] sm:text-xs';
+        } else {
+          statusText.textContent = 'No se pudieron procesar las líneas del subtítulo';
+        }
+      } catch (err) {
+        console.error('Error fetching subtitles for overlay:', err);
+        statusText.textContent = 'Error al cargar subtítulos automáticos';
+      }
+    }
+
+    function renderSubtitleAtTime(currentTime) {
+      const subEl = document.getElementById('cinema-sub-text');
+      if (!subEl) return;
+
+      if (!window.cinemaSubsEnabled || !window.cinemaCues || window.cinemaCues.length === 0) {
+        subEl.classList.add('hidden');
+        return;
+      }
+
+      const adjustedTime = currentTime + window.cinemaSubOffset;
+      const cue = window.cinemaCues.find(c => c.start <= adjustedTime && adjustedTime <= c.end);
+
+      if (cue) {
+        subEl.innerHTML = cue.text.replace(/\n/g, '<br>');
+        subEl.classList.remove('hidden');
+      } else {
+        subEl.classList.add('hidden');
+      }
+    }
+
+    function hideCinemaSubtitle() {
+      const subEl = document.getElementById('cinema-sub-text');
+      if (subEl) subEl.classList.add('hidden');
+    }
+
+    window.toggleCinemaSubtitles = function() {
+      window.cinemaSubsEnabled = !window.cinemaSubsEnabled;
+      const btn = document.getElementById('btn-toggle-subtitles');
+      const btnText = document.getElementById('btn-toggle-sub-text');
+      if (window.cinemaSubsEnabled) {
+        if (btn) btn.className = "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-gray-950 px-2 py-0.5 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer";
+        if (btnText) btnText.textContent = "Activados";
+        showToast("Subtítulos activados");
+      } else {
+        if (btn) btn.className = "bg-gray-800 text-gray-400 border border-gray-700 hover:text-white px-2 py-0.5 rounded-md text-[11px] font-medium transition flex items-center gap-1 cursor-pointer";
+        if (btnText) btnText.textContent = "Desactivados";
+        hideCinemaSubtitle();
+        showToast("Subtítulos desactivados");
+      }
+    };
+
+    window.adjustSubSync = function(delta) {
+      window.cinemaSubOffset = Math.round((window.cinemaSubOffset + delta) * 10) / 10;
+      const label = document.getElementById('sub-sync-offset-label');
+      if (label) {
+        label.textContent = `${window.cinemaSubOffset > 0 ? '+' : ''}${window.cinemaSubOffset.toFixed(1)}s`;
+      }
+      showToast(`Sincronización ajustada: ${window.cinemaSubOffset > 0 ? '+' : ''}${window.cinemaSubOffset.toFixed(1)}s`);
+    };
+
+    window.resetSubSync = function() {
+      window.cinemaSubOffset = 0;
+      const label = document.getElementById('sub-sync-offset-label');
+      if (label) label.textContent = '0.0s';
+      showToast("Sincronización restablecida a 0.0s");
+    };
+
+    window.handleCustomSubtitleUpload = function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const parsed = parseSubtitles(text);
+        if (parsed.length > 0) {
+          window.cinemaCues = parsed;
+          window.cinemaSubsEnabled = true;
+          const statusText = document.getElementById('sub-status-text');
+          if (statusText) {
+            statusText.textContent = `✓ Archivo cargado (${file.name} - ${parsed.length} líneas)`;
+          }
+          const subIndicator = document.getElementById('sub-status-indicator');
+          if (subIndicator) subIndicator.className = 'flex items-center gap-1.5 text-emerald-400 font-semibold text-[11px] sm:text-xs';
+          showToast(`Subtítulo cargado: ${file.name} (${parsed.length} líneas)`, "success");
+        } else {
+          showToast("No se pudieron leer líneas de subtítulo en ese archivo", "warning");
+        }
+      };
+      reader.readAsText(file);
+    };
+
+    window.toggleCinemaFullscreen = function() {
+      const container = document.getElementById('player-viewport-area');
+      if (!container) return;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (container.requestFullscreen) {
+          container.requestFullscreen();
+        } else if (container.webkitRequestFullscreen) {
+          container.webkitRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    };
+
+    // Global PostMessage listener for VidLink player timeupdate events
+    window.addEventListener('message', (event) => {
+      if (event.origin !== 'https://vidlink.pro') return;
+      if (event.data?.type === 'PLAYER_EVENT') {
+        const { event: evtType, currentTime } = event.data.data;
+        if (typeof currentTime === 'number') {
+          renderSubtitleAtTime(currentTime);
+        }
+      }
+    });
+
     const WEBRTC_TRACKERS = [
       'wss://tracker.openwebtorrent.com',
       'wss://tracker.webtorrent.dev',
@@ -1406,26 +1642,9 @@
         copyMagBtn.classList.add('hidden');
       }
 
-      // Fetch available Spanish subtitle to inject into VidLink player
+      // Load subtitles into overlay engine automatically
       if (currentImdbId) {
-        fetch(`/api/subtitles/${currentImdbId}`)
-          .then(res => res.json())
-          .then(data => {
-            const subs = data.subtitles || [];
-            const directSub = subs.find(s => s.download_url);
-            if (directSub) {
-              currentSubUrl = directSub.download_url;
-              if (currentActiveSource === 'vidlink') {
-                const playerIframe = document.getElementById('player-iframe');
-                const vidlinkBase = `https://vidlink.pro/movie/${currentImdbId}`;
-                const subParam = `?sub_file=${encodeURIComponent(currentSubUrl)}&sub_label=Espa%C3%B1ol`;
-                if (playerIframe.src.startsWith(vidlinkBase) && !playerIframe.src.includes('sub_file=')) {
-                  playerIframe.src = vidlinkBase + subParam;
-                }
-              }
-            }
-          })
-          .catch(() => {});
+        loadCinemaSubtitles(currentImdbId);
       }
 
       // Show modal
@@ -1442,6 +1661,7 @@
         switchPlayerSource('webtorrent');
       }
     };
+
 
     window.switchPlayerSource = function(src) {
       currentActiveSource = src;
@@ -1461,7 +1681,7 @@
       const instantContainer = document.getElementById('player-instant-container');
       const webtorrentContainer = document.getElementById('player-webtorrent-container');
       const metricsBar = document.getElementById('player-metrics-bar');
-      const instantInfoBar = document.getElementById('player-instant-infobar');
+      const subtitlesBar = document.getElementById('player-subtitles-bar');
       const playerIframe = document.getElementById('player-iframe');
       const statusText = document.getElementById('player-status-text');
 
@@ -1470,12 +1690,11 @@
         instantContainer.classList.remove('hidden');
         webtorrentContainer.classList.add('hidden');
         metricsBar.classList.add('hidden');
-        instantInfoBar.classList.remove('hidden');
+        if (subtitlesBar) subtitlesBar.classList.remove('hidden');
 
         statusText.textContent = 'Conectado a Servidor 1 (VidLink CDN HD - Ultra Rápido)';
         if (currentImdbId) {
-          const subParam = currentSubUrl ? `?sub_file=${encodeURIComponent(currentSubUrl)}&sub_label=Espa%C3%B1ol` : '';
-          playerIframe.src = `https://vidlink.pro/movie/${currentImdbId}${subParam}`;
+          playerIframe.src = `https://vidlink.pro/movie/${currentImdbId}`;
         } else {
           statusText.textContent = 'Sin IMDb ID. Cambia a la pestaña P2P Torrent.';
         }
@@ -1484,7 +1703,7 @@
         instantContainer.classList.remove('hidden');
         webtorrentContainer.classList.add('hidden');
         metricsBar.classList.add('hidden');
-        instantInfoBar.classList.remove('hidden');
+        if (subtitlesBar) subtitlesBar.classList.remove('hidden');
 
         statusText.textContent = 'Conectado a Servidor 2 (VidSrc HD)';
         if (currentImdbId) {
@@ -1495,7 +1714,6 @@
       } else if (src === 'webtorrent') {
         playerIframe.src = 'about:blank';
         instantContainer.classList.add('hidden');
-        instantInfoBar.classList.add('hidden');
         webtorrentContainer.classList.remove('hidden');
         metricsBar.classList.remove('hidden');
 
@@ -1697,8 +1915,12 @@
       const playerIframe = document.getElementById('player-iframe');
       playerIframe.src = 'about:blank';
 
+      hideCinemaSubtitle();
+      window.cinemaCues = [];
+
       stopWebTorrent();
     }
+
 
     // Latino Sources Modal logic
     window.openLatinoModal = function(encodedTitle, year, imdbId, encodedImg) {
