@@ -1701,9 +1701,15 @@
       }
     });
 
+    // Neutralize any rogue popup calls in parent window
+    window.open = function(url) {
+      console.warn('[CinemaFilter] Blocked rogue window.open popup attempt in parent window:', url);
+      return null;
+    };
+
     // Global PostMessage listener for VidLink player timeupdate events
     window.addEventListener('message', (event) => {
-      if (event.origin !== 'https://vidlink.pro') return;
+      if (event.origin !== 'https://vidlink.pro' && event.origin !== window.location.origin) return;
       if (event.data?.type === 'PLAYER_EVENT') {
         const { event: evtType, currentTime } = event.data.data;
         if (typeof currentTime === 'number') {
